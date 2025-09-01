@@ -1,0 +1,13 @@
+{
+  "name": "drug-inventory-root",
+  "private": true,
+  "workspaces": [
+    "client",
+    "backend"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "dev:client": "npm run dev --prefix client",
+    "dev:backend": "npm run dev --prefix backend"
+  }
+}
