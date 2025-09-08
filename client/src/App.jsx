@@ -8,6 +8,8 @@ import UserHome from "./pages/user/Home";
 import RetailerHome from "./pages/retailer/Home";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 
 export default function App() {
   return (
@@ -22,6 +24,10 @@ export default function App() {
 
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        
+        {/* ADD THESE TWO NEW ROUTES */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/admin/dashboard"
@@ -68,4 +74,4 @@ export default function App() {
       </Routes>
     </Router>
   );
-}
+ }
