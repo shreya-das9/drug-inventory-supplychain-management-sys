@@ -31,12 +31,41 @@ export default function Login() {
       <h2>Login</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
       <form onSubmit={handleSubmit}>
-        <input name="email" type="email" placeholder="Email"
-          value={form.email} onChange={handleChange} required />
-        <input name="password" type="password" placeholder="Password"
-          value={form.password} onChange={handleChange} required />
+        <input 
+          name="email" 
+          type="email" 
+          placeholder="Email"
+          value={form.email} 
+          onChange={handleChange} 
+          required 
+        />
+        <input 
+          name="password" 
+          type="password" 
+          placeholder="Password"
+          value={form.password} 
+          onChange={handleChange} 
+          required 
+        />
         <button type="submit">Login</button>
       </form>
+      
+      <div style={{ marginTop: "15px", textAlign: "center" }}>
+        <button 
+          type="button" 
+          onClick={() => navigate('/forgot-password')}
+          style={{ 
+            background: "none", 
+            border: "none", 
+            color: "#007bff", 
+            textDecoration: "underline",
+            cursor: "pointer",
+            fontSize: "14px"
+          }}
+        >
+          Forgot Password?
+        </button>
+      </div>
     </div>
   );
-}
+ }
