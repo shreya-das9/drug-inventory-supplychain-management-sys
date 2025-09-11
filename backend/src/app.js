@@ -3,9 +3,13 @@ import cors from "cors"; // Add this import
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
+import { initializeEmailService } from "./services/email.service.js";
 
 dotenv.config();
 connectDB();
+
+// Initialize the email service after dotenv is configured
+initializeEmailService();
 
 const app = express();
 
