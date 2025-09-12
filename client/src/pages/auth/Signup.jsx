@@ -1079,7 +1079,7 @@ export default function Signup() {
                 <p className="text-xs text-gray-600 font-medium">Real-time</p>
               </div>
               <div className="text-center">
-                <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                <Heart className="w-8 h-8 text-red-400 mx-auto mb-2" />
                 <p className="text-xs text-gray-600 font-medium">Healthcare</p>
               </div>
             </div>
