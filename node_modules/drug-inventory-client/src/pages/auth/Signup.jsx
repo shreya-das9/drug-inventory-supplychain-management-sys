@@ -416,7 +416,7 @@
 //                 <div className="space-y-6">
 //                   {/* Name Field */}
 //                   <div className="group">
-//                     <label className="block text-sm font-bold text-white/90 mb-3 flex items-center gap-2">
+//                     <label className="block text-sm font-bold text-white/90 mb-3 items-center gap-2">
 //                       <User className="w-4 h-4 text-blue-400" />
 //                       Full Name
 //                     </label>
@@ -593,261 +593,8 @@
 
 
 //ANOTHER PROLLY THE BEST ONE
-// import { useState } from "react";
-// import { User, Mail, Lock, Building2, Pill, Shield, Truck, Store, Sparkles, Activity, Zap } from "lucide-react";
-// import { useNavigate } from "react-router-dom";
-// import { signup } from "../../services/auth.api";
-
-// export default function Signup() {
-//   const [form, setForm] = useState({ name: "", email: "", password: "", role: "USER" });
-//   const [error, setError] = useState("");
-//   const [isLoading, setIsLoading] = useState(false);
-  
-//   const navigate = useNavigate();
-
-//   const handleChange = (e) =>
-//     setForm({ ...form, [e.target.name]: e.target.value });
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     setIsLoading(true);
-//     try {
-//       const { data } = await signup(form);
-//       localStorage.setItem("token", data.token);
-//       localStorage.setItem("role", data.user.role);
-
-//       if (data.user.role === "ADMIN") navigate("/admin/dashboard");
-//       else if (data.user.role === "WAREHOUSE") navigate("/warehouse/dashboard");
-//       else if (data.user.role === "RETAILER") navigate("/retailer/home");
-//       else navigate("/user/home");
-//     } catch (err) {
-//       setError(err.response?.data?.message || "Signup failed");
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   const getRoleIcon = (role) => {
-//     switch (role) {
-//       case "ADMIN": return <Shield className="w-4 h-4" />;
-//       case "WAREHOUSE": return <Truck className="w-4 h-4" />;
-//       case "RETAILER": return <Store className="w-4 h-4" />;
-//       default: return <User className="w-4 h-4" />;
-//     }
-//   };
-
-//   const getRoleDescription = (role) => {
-//     switch (role) {
-//       case "ADMIN": return "Complete system control & analytics";
-//       case "WAREHOUSE": return "Inventory management & logistics";
-//       case "RETAILER": return "Point-of-sale & customer management";
-//       default: return "Patient access & prescription tracking";
-//     }
-//   };
-
-//   const getRoleColor = (role) => {
-//     switch (role) {
-//       case "ADMIN": return "from-purple-500 to-pink-500";
-//       case "WAREHOUSE": return "from-orange-500 to-red-500";
-//       case "RETAILER": return "from-green-500 to-emerald-500";
-//       default: return "from-blue-500 to-cyan-500";
-//     }
-//   };
-
-//   return (
-//     <div className="fixed inset-0 w-full h-full bg-black overflow-hidden">
-//       {/* Animated Background */}
-//       <div className="absolute inset-0">
-//         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-emerald-900/20"></div>
-        
-//         {/* Floating orbs */}
-//         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-400/30 to-purple-400/30 rounded-full blur-3xl animate-pulse"></div>
-//         <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-gradient-to-r from-emerald-400/30 to-cyan-400/30 rounded-full blur-3xl animate-pulse"></div>
-//         <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-gradient-to-r from-pink-400/30 to-orange-400/30 rounded-full blur-3xl animate-pulse"></div>
-        
-//         {/* Animated particles */}
-//         {[...Array(30)].map((_, i) => (
-//           <div
-//             key={i}
-//             className="absolute w-1 h-1 bg-white rounded-full opacity-30 animate-pulse"
-//             style={{
-//               left: `${Math.random() * 100}%`,
-//               top: `${Math.random() * 100}%`,
-//               animationDelay: `${Math.random() * 3}s`,
-//             }}
-//           ></div>
-//         ))}
-//       </div>
-      
-//       <div className="relative z-10 h-full flex items-center justify-center p-6">
-//         <div className="w-full max-w-md">
-//           {/* Header */}
-//           <div className="text-center mb-6">
-//             <div className="relative inline-block mb-4">
-//               <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 p-3 rounded-2xl shadow-2xl">
-//                 <Pill className="w-8 h-8 text-white" />
-//               </div>
-//               <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 animate-spin" />
-//             </div>
-//             <h1 className="text-4xl font-black bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent mb-2">
-//               MedChain
-//             </h1>
-//             <p className="text-gray-300 text-sm mb-3">Next-gen pharmaceutical supply chain</p>
-//             <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-//               <div className="flex items-center gap-1">
-//                 <Activity className="w-3 h-3 text-green-400 animate-pulse" />
-//                 <span>Live Network</span>
-//               </div>
-//               <div className="flex items-center gap-1">
-//                 <Shield className="w-3 h-3 text-blue-400" />
-//                 <span>Blockchain Secured</span>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Main Card */}
-//           <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
-//             {error && (
-//               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-//                 <p className="text-red-300 text-sm">{error}</p>
-//               </div>
-//             )}
-
-//             <div className="space-y-4">
-//               {/* Name Field */}
-//               <div>
-//                 <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
-//                   <User className="w-4 h-4 text-blue-400" />
-//                   Full Name
-//                 </label>
-//                 <input
-//                   name="name"
-//                   type="text"
-//                   placeholder="Enter your full name"
-//                   value={form.name}
-//                   onChange={handleChange}
-//                   required
-//                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all text-white placeholder-white/40"
-//                 />
-//               </div>
-
-//               {/* Email Field */}
-//               <div>
-//                 <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
-//                   <Mail className="w-4 h-4 text-emerald-400" />
-//                   Email Address
-//                 </label>
-//                 <input
-//                   name="email"
-//                   type="email"
-//                   placeholder="Enter your email address"
-//                   value={form.email}
-//                   onChange={handleChange}
-//                   required
-//                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-white placeholder-white/40"
-//                 />
-//               </div>
-
-//               {/* Password Field */}
-//               <div>
-//                 <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
-//                   <Lock className="w-4 h-4 text-purple-400" />
-//                   Password
-//                 </label>
-//                 <input
-//                   name="password"
-//                   type="password"
-//                   placeholder="Create a strong password"
-//                   value={form.password}
-//                   onChange={handleChange}
-//                   required
-//                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-white placeholder-white/40"
-//                 />
-//               </div>
-
-//               {/* Role Selection */}
-//               <div>
-//                 <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
-//                   <Building2 className="w-4 h-4 text-orange-400" />
-//                   Account Type
-//                 </label>
-//                 <select
-//                   name="role"
-//                   value={form.role}
-//                   onChange={handleChange}
-//                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all text-white appearance-none cursor-pointer"
-//                 >
-//                   <option value="USER" className="bg-gray-900">User</option>
-//                   <option value="WAREHOUSE" className="bg-gray-900">Warehouse</option>
-//                   <option value="ADMIN" className="bg-gray-900">Admin</option>
-//                   <option value="RETAILER" className="bg-gray-900">Retailer</option>
-//                 </select>
-                
-//                 {/* Role Description */}
-//                 <div className="mt-3 p-3 bg-gradient-to-r from-white/5 to-white/10 rounded-xl border border-white/10">
-//                   <div className="flex items-center gap-2">
-//                     <div className={`p-1.5 bg-gradient-to-r ${getRoleColor(form.role)} rounded-lg`}>
-//                       {getRoleIcon(form.role)}
-//                     </div>
-//                     <div>
-//                       <div className="font-semibold text-white text-xs uppercase">{form.role}</div>
-//                       <div className="text-white/70 text-xs">{getRoleDescription(form.role)}</div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* Submit Button */}
-//               <button
-//                 onClick={handleSubmit}
-//                 disabled={isLoading}
-//                 className="w-full mt-6 bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white font-bold py-3 px-6 rounded-xl shadow-xl hover:shadow-blue-500/25 focus:ring-4 focus:ring-blue-500/50 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50"
-//               >
-//                 {isLoading ? (
-//                   <div className="flex items-center justify-center gap-2">
-//                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-//                     <span>Creating Account...</span>
-//                   </div>
-//                 ) : (
-//                   <div className="flex items-center justify-center gap-2">
-//                     <Zap className="w-4 h-4" />
-//                     <span>Join the Network</span>
-//                   </div>
-//                 )}
-//               </button>
-//             </div>
-
-//             {/* Login Link - Moved here at bottom of form */}
-//             <div className="mt-6 text-center">
-//               <p className="text-white/60 text-sm">
-//                 Already have an account?{" "}
-//                 <button className="text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text font-bold hover:from-blue-300 hover:to-emerald-300 transition-all">
-//                   Login here
-//                 </button>
-//               </p>
-//             </div>
-//           </div>
-
-//           {/* Security Badges */}
-//           <div className="mt-4 flex items-center justify-center gap-4">
-//             <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-//               <Shield className="w-3 h-3 text-green-400" />
-//               <span className="text-xs text-white/80">SSL Secured</span>
-//             </div>
-//             <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-//               <Activity className="w-3 h-3 text-blue-400 animate-pulse" />
-//               <span className="text-xs text-white/80">HIPAA Compliant</span>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
 import { useState } from "react";
-import { User, Mail, Lock, Building2, Pill, Shield, Truck, Store, Plus, Activity, Heart } from "lucide-react";
+import { User, Mail, Lock, Building2, Pill, Shield, Truck, Store, Sparkles, Activity, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { signup } from "../../services/auth.api";
 
@@ -882,10 +629,10 @@ export default function Signup() {
 
   const getRoleIcon = (role) => {
     switch (role) {
-      case "ADMIN": return <Shield className="w-5 h-5" />;
-      case "WAREHOUSE": return <Truck className="w-5 h-5" />;
-      case "RETAILER": return <Store className="w-5 h-5" />;
-      default: return <User className="w-5 h-5" />;
+      case "ADMIN": return <Shield className="w-4 h-4" />;
+      case "WAREHOUSE": return <Truck className="w-4 h-4" />;
+      case "RETAILER": return <Store className="w-4 h-4" />;
+      default: return <User className="w-4 h-4" />;
     }
   };
 
@@ -900,139 +647,151 @@ export default function Signup() {
 
   const getRoleColor = (role) => {
     switch (role) {
-      case "ADMIN": return "border-purple-200 bg-purple-50 text-purple-700";
-      case "WAREHOUSE": return "border-orange-200 bg-orange-50 text-orange-700";
-      case "RETAILER": return "border-green-200 bg-green-50 text-green-700";
-      default: return "border-blue-200 bg-blue-50 text-blue-700";
+      case "ADMIN": return "from-purple-500 to-pink-500";
+      case "WAREHOUSE": return "from-orange-500 to-red-500";
+      case "RETAILER": return "from-green-500 to-emerald-500";
+      default: return "from-blue-500 to-cyan-500";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
-      {/* Floating Medical Icons */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <Pill className="absolute top-20 left-10 w-8 h-8 text-blue-200 opacity-30 animate-bounce" style={{animationDelay: '0s'}} />
-        <Plus className="absolute top-32 right-20 w-6 h-6 text-green-200 opacity-40 animate-pulse" style={{animationDelay: '1s'}} />
-        <Heart className="absolute bottom-40 left-16 w-7 h-7 text-red-200 opacity-25 animate-bounce" style={{animationDelay: '2s'}} />
-        <Activity className="absolute top-1/3 right-10 w-6 h-6 text-purple-200 opacity-35 animate-pulse" style={{animationDelay: '0.5s'}} />
-        <Pill className="absolute bottom-20 right-32 w-5 h-5 text-orange-200 opacity-30 rotate-45 animate-bounce" style={{animationDelay: '1.5s'}} />
-        <Plus className="absolute top-1/2 left-8 w-8 h-8 text-teal-200 opacity-20 animate-pulse" style={{animationDelay: '2.5s'}} />
+    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-emerald-900/20"></div>
+        
+        {/* Floating orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-400/30 to-purple-400/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-gradient-to-r from-emerald-400/30 to-cyan-400/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-gradient-to-r from-pink-400/30 to-orange-400/30 rounded-full blur-3xl animate-pulse"></div>
+        
+        {/* Animated particles */}
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white rounded-full opacity-30 animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+            }}
+          ></div>
+        ))}
       </div>
-
-      <div className="w-full max-w-2xl relative z-10">
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-          {/* Header Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-green-600 px-8 py-12 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-white/10"></div>
-            <div className="relative z-10">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-2xl mb-6 backdrop-blur-sm">
-                <Pill className="w-10 h-10 text-white" />
+      
+      <div className="relative z-10 h-full flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="relative inline-block mb-4">
+              <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 p-3 rounded-2xl shadow-2xl">
+                <Pill className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">MedChain</h1>
-              <p className="text-blue-100 text-lg">Pharmaceutical Supply Chain Management</p>
-              
-              {/* Medical capsules decoration */}
-              <div className="absolute top-4 left-4 flex space-x-2">
-                <div className="w-3 h-6 bg-white/20 rounded-full"></div>
-                <div className="w-3 h-6 bg-white/30 rounded-full"></div>
+              <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 animate-spin" />
+            </div>
+            <h1 className="text-4xl font-black bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent mb-2">
+              MedChain
+            </h1>
+            <p className="text-gray-300 text-sm mb-3">Next-gen pharmaceutical supply chain</p>
+            <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
+              <div className="flex items-center gap-1">
+                <Activity className="w-3 h-3 text-green-400 animate-pulse" />
+                <span>Live Network</span>
               </div>
-              <div className="absolute top-8 right-6 flex space-x-2">
-                <div className="w-3 h-6 bg-white/25 rounded-full"></div>
-                <div className="w-3 h-6 bg-white/20 rounded-full"></div>
-                <div className="w-3 h-6 bg-white/30 rounded-full"></div>
+              <div className="flex items-center gap-1">
+                <Shield className="w-3 h-3 text-blue-400" />
+                <span>Blockchain Secured</span>
               </div>
             </div>
           </div>
 
-          {/* Form Section */}
-          <div className="px-8 py-8">
+          {/* Main Card */}
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-red-600 text-sm font-medium">{error}</p>
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                <p className="text-red-300 text-sm">{error}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name Field */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    Full Name
-                  </label>
-                  <input
-                    name="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={form.name}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400"
-                  />
-                </div>
+            <div className="space-y-4">
+              {/* Name Field */}
+              <div>
+                <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-400" />
+                  Full Name
+                </label>
+                <input
+                  name="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all text-white placeholder-white/40"
+                />
+              </div>
 
-                {/* Email Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-green-600" />
-                    Email Address
-                  </label>
-                  <input
-                    name="email"
-                    type="email"
-                    placeholder="your.email@hospital.com"
-                    value={form.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-gray-800 placeholder-gray-400"
-                  />
-                </div>
+              {/* Email Field */}
+              <div>
+                <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-emerald-400" />
+                  Email Address
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-white placeholder-white/40"
+                />
+              </div>
 
-                {/* Password Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-purple-600" />
-                    Password
-                  </label>
-                  <input
-                    name="password"
-                    type="password"
-                    placeholder="Create secure password"
-                    value={form.password}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-gray-800 placeholder-gray-400"
-                  />
-                </div>
+              {/* Password Field */}
+              <div>
+                <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-purple-400" />
+                  Password
+                </label>
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Create a strong password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-white placeholder-white/40"
+                />
               </div>
 
               {/* Role Selection */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-orange-600" />
+                <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-orange-400" />
                   Account Type
                 </label>
                 <select
                   name="role"
                   value={form.role}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all text-gray-800 appearance-none cursor-pointer bg-white"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all text-white appearance-none cursor-pointer"
                 >
-                  <option value="USER">Patient/User</option>
-                  <option value="WAREHOUSE">Warehouse Manager</option>
-                  <option value="ADMIN">System Administrator</option>
-                  <option value="RETAILER">Pharmacy/Retailer</option>
+                  <option value="USER" className="bg-gray-900">User</option>
+                  <option value="WAREHOUSE" className="bg-gray-900">Warehouse</option>
+                  <option value="ADMIN" className="bg-gray-900">Admin</option>
+                  <option value="RETAILER" className="bg-gray-900">Retailer</option>
                 </select>
                 
-                {/* Role Description Card */}
-                <div className={`mt-4 p-4 border-2 rounded-xl ${getRoleColor(form.role)} transition-all`}>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                {/* Role Description */}
+                <div className="mt-3 p-3 bg-gradient-to-r from-white/5 to-white/10 rounded-xl border border-white/10">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 bg-gradient-to-r ${getRoleColor(form.role)} rounded-lg`}>
                       {getRoleIcon(form.role)}
                     </div>
                     <div>
-                      <div className="font-bold text-sm uppercase tracking-wide">{form.role.replace('_', ' ')}</div>
-                      <div className="text-sm opacity-80 mt-1">{getRoleDescription(form.role)}</div>
+                      <div className="font-semibold text-white text-xs uppercase">{form.role}</div>
+                      <div className="text-white/70 text-xs">{getRoleDescription(form.role)}</div>
                     </div>
                   </div>
                 </div>
@@ -1040,48 +799,44 @@ export default function Signup() {
 
               {/* Submit Button */}
               <button
-                type="submit"
+                onClick={handleSubmit}
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl focus:ring-4 focus:ring-blue-500/25 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                className="w-full mt-6 bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white font-bold py-3 px-6 rounded-xl shadow-xl hover:shadow-blue-500/25 focus:ring-4 focus:ring-blue-500/50 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50"
               >
                 {isLoading ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Creating Your Account...</span>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Creating Account...</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    <Pill className="w-5 h-5" />
-                    <span>Join MedChain Network</span>
+                    <Zap className="w-4 h-4" />
+                    <span>Join the Network</span>
                   </div>
                 )}
               </button>
-            </form>
+            </div>
 
-            {/* Login Link */}
-            <div className="mt-8 text-center">
-              <p className="text-gray-600">
+            {/* Login Link - Moved here at bottom of form */}
+            <div className="mt-6 text-center">
+              <p className="text-white/60 text-sm">
                 Already have an account?{" "}
-                <button className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">
-                  Sign in here
+                <button className="text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text font-bold hover:from-blue-300 hover:to-emerald-300 transition-all">
+                  Login here
                 </button>
               </p>
             </div>
+          </div>
 
-            {/* Medical Features */}
-            <div className="mt-8 grid grid-cols-3 gap-4 pt-6 border-t border-gray-100">
-              <div className="text-center">
-                <Shield className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <p className="text-xs text-gray-600 font-medium">Secure</p>
-              </div>
-              <div className="text-center">
-                <Activity className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <p className="text-xs text-gray-600 font-medium">Real-time</p>
-              </div>
-              <div className="text-center">
-                <Heart className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                <p className="text-xs text-gray-600 font-medium">Healthcare</p>
-              </div>
+          {/* Security Badges */}
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+              <Shield className="w-3 h-3 text-green-400" />
+              <span className="text-xs text-white/80">SSL Secured</span>
+            </div>
+            <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+              <Activity className="w-3 h-3 text-blue-400 animate-pulse" />
+              <span className="text-xs text-white/80">HIPAA Compliant</span>
             </div>
           </div>
         </div>
@@ -1089,3 +844,5 @@ export default function Signup() {
     </div>
   );
 }
+
+
