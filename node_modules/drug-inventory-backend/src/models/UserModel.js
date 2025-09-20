@@ -9,7 +9,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ["ADMIN", "WAREHOUSE", "RETAILER", "USER"],
     default: "USER"
-  }
+  },
+  // Reset password fields
+  resetToken: { type: String },
+  resetTokenExpiry: { type: Date }
 }, { timestamps: true });
 
 // Encrypt password
@@ -25,4 +28,4 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-export default mongoose.model("User", UserSchema);
+ export default mongoose.model("User", UserSchema);
