@@ -45,7 +45,7 @@ import {
   deleteDrug,
   bulkAddDrugs,
 } from "../../controllers/admin/drugs.controller.js";
-
+ 
 const router = express.Router();
 
 router.get("/", verifyToken, isWarehouseAdmin, getAllDrugs);
