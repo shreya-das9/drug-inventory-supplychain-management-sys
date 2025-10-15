@@ -1,5 +1,4 @@
-
-
+//SHREYA'S CODE.
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 

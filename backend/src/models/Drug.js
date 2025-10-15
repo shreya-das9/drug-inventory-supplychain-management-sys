@@ -1,5 +1,5 @@
+//SHREYA'S CODE.
 import mongoose from "mongoose";
-
 const DrugSchema = new mongoose.Schema({
   name: { type: String, required: true, index: true },
   category: { type: String, default: "" },
