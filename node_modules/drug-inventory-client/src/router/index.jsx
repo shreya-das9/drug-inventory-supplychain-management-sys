@@ -1,7 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
+import AdminLayout from "../pages/admin/AdminLayout";
 import AdminDashboard from "../pages/admin/Dashboard";
+import AdminDrugs from "../pages/admin/Drugs";
+import AdminInventory from "../pages/admin/Inventory";
 import WarehouseDashboard from "../pages/warehouse/Dashboard";
 import UserHome from "../pages/user/Home";
 import RetailerHome from "../pages/retailer/Home";
@@ -16,14 +19,20 @@ export default function AppRouter() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Admin */}
-        <Route path="/admin/dashboard" element={
-          <AuthGuard>
-            <RoleGuard allowedRoles={["ADMIN"]}>
-              <AdminDashboard />
-            </RoleGuard>
-          </AuthGuard>
-        } />
+        {/* Admin Layout with nested routes */}
+        <Route 
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={["ADMIN"]}>
+                <AdminLayout />
+              </RoleGuard>
+            </AuthGuard>
+          }
+        >
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/drugs" element={<AdminDrugs />} />
+          <Route path="/admin/inventory" element={<AdminInventory />} />
+        </Route>
 
         {/* Warehouse */}
         <Route path="/warehouse/dashboard" element={

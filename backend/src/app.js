@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 // ===== CORS FIX (THIS WAS THE PROBLEM) =====
 app.use(
   cors({
-    origin: "http://localhost:5174",   // ✅ your React frontend port
+    origin: "http://localhost:5173",   // ✅ your React frontend port
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   })
