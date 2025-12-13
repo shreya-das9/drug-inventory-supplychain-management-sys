@@ -19,10 +19,6 @@
     "react-chartjs-2": "^5.3.1",
     "react-confetti": "^6.4.0",
     "react-dom": "^18.3.1",
-<<<<<<< HEAD
-=======
-    "react-hot-toast": "^2.6.0",
->>>>>>> 0464a212fb812c4d9a10b17460a276d925d13584
     "react-router-dom": "^7.9.4",
     "recharts": "^3.5.1"
   },
