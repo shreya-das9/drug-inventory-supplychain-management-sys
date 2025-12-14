@@ -284,76 +284,103 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: "http://localhost:5173",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
 }));
 
 // ===== ROUTES (USING SIMPLE REQUIRE FOR RELIABILITY) =====
 
 // 1. Auth Routes
 try {
-  // Using require() and .default to handle ES module imports reliably
-  const authRoutes = (await import("./routes/auth.routes.js")).default;
-  app.use("/api/auth", authRoutes);
-  console.log("✅ Auth routes loaded");
+  // Using require() and .default to handle ES module imports reliably
+  const authRoutes = (await import("./routes/auth.routes.js")).default;
+  app.use("/api/auth", authRoutes);
+  console.log("✅ Auth routes loaded");
 } catch (err) {
-  console.warn("⚠️  Auth routes not found:", err.message);
+  console.warn("⚠️  Auth routes not found:", err.message);
 }
 
 // 2. Admin Drugs Routes
 try {
-  const drugsRoutes = (await import("./routes/admin/drugs.routes.js")).default;
-  app.use("/api/admin/drugs", drugsRoutes);
-  console.log("✅ Drugs routes loaded");
+  const drugsRoutes = (await import("./routes/admin/drugs.routes.js")).default;
+  app.use("/api/admin/drugs", drugsRoutes);
+  console.log("✅ Drugs routes loaded");
 } catch (err) {
-  console.warn("⚠️  Drugs routes not found:", err.message);
+  console.warn("⚠️  Drugs routes not found:", err.message);
 }
 
 // 3. Admin Dashboard Routes
 try {
-  const dashboardRoutes = (await import("./routes/admin/dashboard.routes.js")).default;
-  app.use("/api/admin/dashboard", dashboardRoutes);
-  console.log("✅ Dashboard routes loaded");
+  const dashboardRoutes = (await import("./routes/admin/dashboard.routes.js")).default;
+  app.use("/api/admin/dashboard", dashboardRoutes);
+  console.log("✅ Dashboard routes loaded");
 } catch (err) {
-  console.warn("⚠️  Dashboard routes not found:", err.message);
+  console.warn("⚠️  Dashboard routes not found:", err.message);
 }
 
 // 4. Admin Inventory Routes
 try {
-  const inventoryRoutes = (await import("./routes/admin/inventory.routes.js")).default;
-  app.use("/api/admin/inventory", inventoryRoutes);
-  console.log("✅ Inventory routes loaded");
+  const inventoryRoutes = (await import("./routes/admin/inventory.routes.js")).default;
+  app.use("/api/admin/inventory", inventoryRoutes);
+  console.log("✅ Inventory routes loaded");
 } catch (err) {
-  console.warn("⚠️  Inventory routes not found:", err.message);
+  console.warn("⚠️  Inventory routes not found:", err.message);
+}
+
+// 5. Admin Suppliers Routes (NEW)
+try {
+  const suppliersRoutes = (await import("./routes/admin/suppliers.routes.js")).default;
+  app.use("/api/admin/suppliers", suppliersRoutes);
+  console.log("✅ Suppliers routes loaded");
+} catch (err) {
+  console.warn("⚠️  Suppliers routes not found:", err.message);
+}
+
+// 6. Admin Shipments Routes (NEW)
+try {
+  const shipmentsRoutes = (await import("./routes/admin/shipments.routes.js")).default;
+  app.use("/api/admin/shipments", shipmentsRoutes);
+  console.log("✅ Shipments routes loaded");
+} catch (err) {
+  console.warn("⚠️  Shipments routes not found:", err.message);
+}
+
+// 7. Admin Orders Routes (NEW)
+try {
+  const ordersRoutes = (await import("./routes/admin/orders.routes.js")).default;
+  app.use("/api/admin/orders", ordersRoutes);
+  console.log("✅ Orders routes loaded");
+} catch (err) {
+  console.warn("⚠️  Orders routes not found:", err.message);
 }
 
 // ===== TEST ROUTE =====
 app.get("/api/test", (req, res) => {
-  res.json({ success: true, message: "Server is running!" });
+  res.json({ success: true, message: "Server is running!" });
 });
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`
-  });
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`
+  });
 });
 
 // ===== ERROR HANDLING MIDDLEWARE =====
 app.use((err, req, res, next) => {
-  console.error("Server Error:", err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error"
-  });
+  console.error("Server Error:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error"
+  });
 });
 
 // ===== START SERVER =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 API running on http://localhost:${PORT}`);
+  console.log(`🚀 API running on http://localhost:${PORT}`);
 });
 
-export default app;
+ export default app;

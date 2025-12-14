@@ -81,10 +81,12 @@ app.use("/api/auth", authRoutes);
 import dashboardRoutes from "./routes/admin/dashboard.routes.js";
 import drugsRoutes from "./routes/admin/drugs.routes.js";
 import inventoryRoutes from "./routes/admin/inventory.routes.js";
+import supplierRoutes from "./routes/admin/supplier.routes.js";  
 
 app.use("/api/admin/dashboard", dashboardRoutes);
 app.use("/api/admin/drugs", drugsRoutes);
 app.use("/api/admin/inventory", inventoryRoutes);
+app.use("/api/admin/suppliers", supplierRoutes);  
 
 // ✅ Error handling middleware (ADD THIS!)
 app.use((err, req, res, next) => {

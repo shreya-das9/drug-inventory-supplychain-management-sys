@@ -17,11 +17,11 @@ export const signup = async (req, res) => {
     const newUser = new User({ name, email, password, role });
     await newUser.save();
 
-    // create token
+    // create token - NOW EXPIRES IN 7 DAYS for easier testing!
     const token = jwt.sign(
       { id: newUser._id, role: newUser.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }  // ← CHANGED FROM "1h" TO "7d"
     );
 
     res.status(201).json({
@@ -37,4 +37,4 @@ export const signup = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-};
+ };
