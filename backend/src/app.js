@@ -26,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: "http://localhost:5173",   // ✅ your React frontend port
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
   })
 );
@@ -69,6 +69,33 @@ try {
   console.warn("⚠️ Inventory routes not found:", err.message);
 }
 
+// 5. Admin Suppliers Routes
+try {
+  const suppliersRoutes = (await import("./routes/admin/suppliers.routes.js")).default;
+  app.use("/api/admin/suppliers", suppliersRoutes);
+  console.log("✅ Suppliers routes loaded");
+} catch (err) {
+  console.warn("⚠️ Suppliers routes not found:", err.message);
+}
+
+// 6. Admin Shipments Routes
+try {
+  const shipmentsRoutes = (await import("./routes/admin/shipments.routes.js")).default;
+  app.use("/api/admin/shipments", shipmentsRoutes);
+  console.log("✅ Shipments routes loaded");
+} catch (err) {
+  console.warn("⚠️ Shipments routes not found:", err.message);
+}
+
+// 7. Admin Orders Routes
+try {
+  const ordersRoutes = (await import("./routes/admin/orders.routes.js")).default;
+  app.use("/api/admin/orders", ordersRoutes);
+  console.log("✅ Orders routes loaded");
+} catch (err) {
+  console.warn("⚠️ Orders routes not found:", err.message);
+}
+
 // ===== TEST ROUTE =====
 app.get("/api/test", (req, res) => {
   res.json({ success: true, message: "Server is running!" });
@@ -97,4 +124,4 @@ app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);
 });
 
-export default app;
+ export default app;

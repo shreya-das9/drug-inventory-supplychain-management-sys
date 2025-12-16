@@ -1,4 +1,4 @@
-// backend/models/Supplier.js
+// backend/models/SupplierModel.js
 import mongoose from "mongoose";
 
 const SupplierSchema = new mongoose.Schema({

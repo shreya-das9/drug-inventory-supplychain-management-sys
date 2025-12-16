@@ -483,6 +483,9 @@ import {
   HelpCircle,
   Settings,
   X,
+  Users,
+  Truck,
+  FileText,
 } from "lucide-react";
 import logo from "../../assets/logo.png";
 
@@ -499,6 +502,9 @@ export default function AdminLayout() {
     { id: "dashboard", label: "Dashboard", icon: <Package className="w-5 h-5" />, path: "/admin/dashboard" },
     { id: "drugs", label: "Drugs", icon: <Pill className="w-5 h-5" />, path: "/admin/drugs" },
     { id: "inventory", label: "Inventory", icon: <Boxes className="w-5 h-5" />, path: "/admin/inventory" },
+    { id: "suppliers", label: "Suppliers", icon: <Users className="w-5 h-5" />, path: "/admin/suppliers" },
+    { id: "shipments", label: "Shipments", icon: <Truck className="w-5 h-5" />, path: "/admin/shipments" },
+    { id: "orders", label: "Orders", icon: <FileText className="w-5 h-5" />, path: "/admin/orders" },
     { id: "alerts", label: "Alerts", icon: <AlertTriangle className="w-5 h-5" />, path: "/admin/alerts" },
   ];
 
@@ -511,6 +517,9 @@ export default function AdminLayout() {
   const getActivePage = () => {
     if (location.pathname.includes("drugs")) return "drugs";
     if (location.pathname.includes("inventory")) return "inventory";
+    if (location.pathname.includes("suppliers")) return "suppliers";
+    if (location.pathname.includes("shipments")) return "shipments";
+    if (location.pathname.includes("orders")) return "orders";
     if (location.pathname.includes("alerts")) return "alerts";
     return "dashboard";
   };
@@ -676,7 +685,7 @@ export default function AdminLayout() {
         </motion.main>
       </div>
 
-      {/* ✅ Support Modal Restored */}
+      {/* Support Modal */}
       <AnimatePresence>
         {showSupport && (
           <motion.div
@@ -779,16 +788,4 @@ export default function AdminLayout() {
       </AnimatePresence>
     </div>
   );
-}
-
-
-
-
-
-
-
-
-
-
-
-
+ }

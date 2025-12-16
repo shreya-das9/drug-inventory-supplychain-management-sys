@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import axios from "axios";
 import Drug from "../src/models/Drug.js";
-import Supplier from "../src/models/Supplier.js";
+import Supplier from "../src/models/SupplierModel.js";
 import dotenv from "dotenv";
 dotenv.config();
 

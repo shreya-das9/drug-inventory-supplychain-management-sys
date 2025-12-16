@@ -12,7 +12,7 @@ const getAllOrders = async (req, res) => {
     const query = {};
     
     if (status) {
-      query.status = status;
+      query.status = status.toLowerCase();
     }
     
     if (supplier) {
@@ -86,13 +86,20 @@ const createOrder = async (req, res) => {
       createdBy: req.user._id
     };
     
-    // Verify supplier exists and is approved
-    const supplier = await SupplierModel.findById(orderData.supplier);
-    if (!supplier) {
-      return errorResponse(res, 404, 'Supplier not found');
+    // Normalize status to lowercase if provided
+    if (orderData.status) {
+      orderData.status = orderData.status.toLowerCase();
     }
-    if (supplier.status !== 'approved') {
-      return errorResponse(res, 400, 'Can only create orders from approved suppliers');
+    
+    // Verify supplier exists and is approved (if supplier is provided)
+    if (orderData.supplier) {
+      const supplier = await SupplierModel.findById(orderData.supplier);
+      if (!supplier) {
+        return errorResponse(res, 404, 'Supplier not found');
+      }
+      if (supplier.status !== 'approved') {
+        return errorResponse(res, 400, 'Can only create orders from approved suppliers');
+      }
     }
     
     // Verify all drugs exist
@@ -129,10 +136,15 @@ const createOrder = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    let { status, notes } = req.body;
+    
+    // Normalize status to lowercase
+    if (status) {
+      status = status.toLowerCase().trim();
+    }
     
     // Validate status
-    const validStatuses = ['pending', 'approved', 'processing', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'approved', 'processing', 'completed', 'cancelled', 'confirmed', 'shipped', 'delivered'];
     if (!validStatuses.includes(status)) {
       return errorResponse(res, 400, `Status must be one of: ${validStatuses.join(', ')}`);
     }
@@ -151,9 +163,25 @@ const updateOrderStatus = async (req, res) => {
       order.approvedAt = new Date();
     }
     
+    if (status === 'delivered') {
+      order.deliveredAt = new Date();
+    }
+    
+    if (status === 'cancelled' && notes) {
+      order.cancellationReason = notes;
+    }
+    
     if (notes) {
       order.notes = notes;
     }
+    
+    // Add to status history
+    order.statusHistory.push({
+      status: status,
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      notes: notes || ''
+    });
     
     await order.save();
     
@@ -208,15 +236,24 @@ const cancelOrder = async (req, res) => {
     }
     
     // Check if order can be cancelled
-    if (['completed', 'cancelled'].includes(order.status)) {
+    if (['completed', 'cancelled', 'delivered'].includes(order.status)) {
       return errorResponse(res, 400, `Cannot cancel ${order.status} order`);
     }
     
     // Update order status
     order.status = 'cancelled';
     if (reason) {
+      order.cancellationReason = reason;
       order.notes = reason;
     }
+    
+    // Add to status history
+    order.statusHistory.push({
+      status: 'cancelled',
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      notes: reason || 'Order cancelled'
+    });
     
     await order.save();
     
@@ -247,12 +284,17 @@ const getOrderStats = async (req, res) => {
       processing: 0,
       completed: 0,
       cancelled: 0,
+      confirmed: 0,
+      shipped: 0,
+      delivered: 0,
       totalValue: 0
     };
     
     stats.forEach(stat => {
-      formattedStats[stat._id] = stat.count;
-      formattedStats.totalValue += stat.totalValue || 0;
+      if (stat._id) {
+        formattedStats[stat._id] = stat.count;
+        formattedStats.totalValue += stat.totalValue || 0;
+      }
     });
     
     return successResponse(res, 200, 'Order statistics fetched', formattedStats);

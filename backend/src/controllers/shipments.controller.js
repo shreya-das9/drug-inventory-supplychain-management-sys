@@ -109,7 +109,7 @@ const createShipment = async (req, res) => {
       });
     }
     
-    if (supplierDoc.status !== 'approved') {
+    if (supplierDoc.status.toLowerCase() !== 'approved') {
       return res.status(400).json({
         success: false,
         message: 'Can only create shipments with approved suppliers'
@@ -185,7 +185,7 @@ const updateShipmentStatus = async (req, res) => {
     
     const validStatuses = ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'];
     
-    if (!validStatuses.includes(status)) {
+    if (!validStatuses.includes(status.toLowerCase())) {
       return res.status(400).json({
         success: false,
         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
@@ -201,6 +201,7 @@ const updateShipmentStatus = async (req, res) => {
       });
     }
     
+    // Check if shipment is already in final state
     if (['delivered', 'cancelled'].includes(shipment.status)) {
       return res.status(400).json({
         success: false,
@@ -208,10 +209,46 @@ const updateShipmentStatus = async (req, res) => {
       });
     }
     
-    const oldStatus = shipment.status;
-    shipment.status = status;
+    // ✅ ADD STATUS TRANSITION VALIDATION
+    const validTransitions = {
+      'pending': ['processing', 'shipped', 'cancelled'],
+      'processing': ['shipped', 'in_transit', 'cancelled'],
+      'shipped': ['in_transit', 'delivered', 'cancelled'],
+      'in_transit': ['delivered', 'cancelled'],
+      'delivered': [],  // Final state
+      'cancelled': []   // Final state
+    };
     
-    if (status === 'delivered') {
+    const currentStatus = shipment.status.toLowerCase();
+    const newStatus = status.toLowerCase();
+    
+    // Check if transition is valid
+    if (!validTransitions[currentStatus].includes(newStatus)) {
+      let errorMessage = `Cannot change status from ${currentStatus.toUpperCase()} to ${newStatus.toUpperCase()}.`;
+      
+      // Provide helpful error messages
+      if (currentStatus === 'pending' && newStatus === 'delivered') {
+        errorMessage += ' Must go through SHIPPED first.';
+      } else if (currentStatus === 'pending' && newStatus === 'in_transit') {
+        errorMessage += ' Must go through PROCESSING or SHIPPED first.';
+      } else if (currentStatus === 'processing' && newStatus === 'delivered') {
+        errorMessage += ' Must go through SHIPPED or IN_TRANSIT first.';
+      } else if (currentStatus === 'shipped' && newStatus === 'pending') {
+        errorMessage += ' Cannot go backwards to PENDING.';
+      } else {
+        errorMessage += ` Valid transitions from ${currentStatus.toUpperCase()} are: ${validTransitions[currentStatus].map(s => s.toUpperCase()).join(', ')}.`;
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: errorMessage
+      });
+    }
+    
+    const oldStatus = shipment.status;
+    shipment.status = status.toLowerCase();
+    
+    if (status.toLowerCase() === 'delivered') {
       shipment.actualDeliveryDate = new Date();
     }
     
