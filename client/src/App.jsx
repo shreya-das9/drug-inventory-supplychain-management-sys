@@ -157,6 +157,9 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Drugs from "./pages/admin/Drugs";
 import Inventory from "./pages/admin/Inventory";
+import Suppliers from "./pages/admin/Suppliers";
+import Shipments from "./pages/admin/Shipments";
+import Orders from "./pages/admin/Orders";
 import Alerts from "./pages/admin/Alerts";
 
 import WarehouseDashboard from "./pages/warehouse/Dashboard";
@@ -194,6 +197,9 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="drugs" element={<Drugs />} />
           <Route path="inventory" element={<Inventory />} />
+          <Route path="suppliers" element={<Suppliers />} />
+          <Route path="shipments" element={<Shipments />} />
+          <Route path="orders" element={<Orders />} />
           <Route path="alerts" element={<Alerts />} />
         </Route>
 
@@ -234,4 +240,4 @@ export default function App() {
       </Routes>
     </Router>
   );
-}
+ }

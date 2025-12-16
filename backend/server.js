@@ -117,7 +117,7 @@ dotenv.config();
 
 const app = express();
 
-// MongoDB
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
@@ -126,8 +126,8 @@ mongoose
 // CORS
 app.use(
   cors({
-    origin: "http://localhost:5174",   // your frontend is 5174, not 5173
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: "http://localhost:5174",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
 );
@@ -139,17 +139,65 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
-// ✅ FIXED — Correct auth route path
+// ============= ROUTES =============
+
+// Auth routes
 import authRoutes from "./routes/auth.routes.js";
 app.use("/api/auth", authRoutes);
+console.log("✅ Auth routes loaded");
 
-// Admin routes
+// Admin Dashboard routes
 import dashboardRoutes from "./routes/admin/dashboard.routes.js";
-import drugsRoutes from "./routes/admin/drugs.routes.js";
-import inventoryRoutes from "./routes/admin/inventory.routes.js";
-
 app.use("/api/admin/dashboard", dashboardRoutes);
-app.use("/api/admin/drugs", drugsRoutes);
-app.use("/api/admin/inventory", inventoryRoutes);
+console.log("✅ Dashboard routes loaded");
 
-// Error han
+// Admin Drugs routes
+import drugsRoutes from "./routes/admin/drugs.routes.js";
+app.use("/api/admin/drugs", drugsRoutes);
+console.log("✅ Drugs routes loaded");
+
+// Admin Inventory routes
+import inventoryRoutes from "./routes/admin/inventory.routes.js";
+app.use("/api/admin/inventory", inventoryRoutes);
+console.log("✅ Inventory routes loaded");
+
+// Admin Suppliers routes (ADDED)
+import supplierRoutes from "./routes/admin/suppliers.routes.js";
+app.use("/api/admin/suppliers", supplierRoutes);
+console.log("✅ Suppliers routes loaded");
+
+// Admin Shipments routes (ADDED)
+import shipmentRoutes from "./routes/admin/shipments.routes.js";
+app.use("/api/admin/shipments", shipmentRoutes);
+console.log("✅ Shipments routes loaded");
+
+// Admin Orders routes (ADDED)
+import orderRoutes from "./routes/admin/orders.routes.js";
+app.use("/api/admin/orders", orderRoutes);
+console.log("✅ Orders routes loaded");
+
+// ============= ERROR HANDLING =============
+
+// 404 handler for unmatched routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: `Route ${req.originalUrl} not found` 
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err);
+  res.status(500).json({ 
+    success: false, 
+    message: err.message || "Internal Server Error" 
+  });
+});
+
+// ============= START SERVER =============
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 API running on http://localhost:${PORT}`);
+});
