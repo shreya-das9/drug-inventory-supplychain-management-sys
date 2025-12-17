@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useApi } from "../../hooks/useApi";
 import { 
   Users, 
   Plus, 
@@ -17,11 +18,11 @@ import {
   TrendingUp,
   Building2
 } from "lucide-react";
-import axios from "axios";
 
 export default function Suppliers() {
+  const { request, loading } = useApi();
+  
   const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,44 +37,163 @@ export default function Suppliers() {
   });
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState(null);
+  const [approvingSupplier, setApprovingSupplier] = useState(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    contactPerson: '',
+    address: ''
+  });
+  const [approvalData, setApprovalData] = useState({
+    status: 'APPROVED',
+    rejectionReason: ''
+  });
+
   useEffect(() => {
     fetchSuppliers();
     fetchStats();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, searchQuery]);
 
   const fetchSuppliers = async () => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const url = statusFilter === "all" 
-        ? `http://localhost:5000/api/admin/suppliers?page=${currentPage}&limit=${itemsPerPage}`
-        : `http://localhost:5000/api/admin/suppliers?status=${statusFilter}&page=${currentPage}&limit=${itemsPerPage}`;
+      let url = `/api/admin/suppliers?page=${currentPage}&limit=${itemsPerPage}`;
+      if (searchQuery) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
+      }
+      if (statusFilter !== "all") {
+        url += `&status=${statusFilter}`;
+      }
       
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await request("GET", url);
       
-      setSuppliers(response.data.data.suppliers || []);
-      setTotalPages(response.data.data.pagination?.totalPages || 1);
-      setTotalItems(response.data.data.pagination?.totalItems || 0);
-      setLastUpdate(new Date());
+      if (response?.success || response?.data) {
+        const data = response.data || response;
+        setSuppliers(data.suppliers || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalItems(data.pagination?.totalItems || 0);
+        setLastUpdate(new Date());
+      }
     } catch (error) {
       console.error("Error fetching suppliers:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/suppliers/stats", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStats(response.data.data);
+      const response = await request("GET", "/api/admin/suppliers/stats");
+      if (response?.success || response?.data) {
+        setStats(response.data || response);
+      }
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
+  };
+
+  const handleAddSupplier = async () => {
+    try {
+      if (!formData.name || !formData.email || !formData.phone || !formData.contactPerson) {
+        alert('Please fill all required fields');
+        return;
+      }
+      
+      const response = await request("POST", "/api/admin/suppliers", formData);
+      if (response?.success) {
+        alert('Supplier added successfully!');
+        setFormData({ name: '', email: '', phone: '', contactPerson: '', address: '' });
+        setShowAddModal(false);
+        fetchSuppliers();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error("Error adding supplier:", error);
+      alert('Failed to add supplier');
+    }
+  };
+
+  const handleUpdateSupplier = async () => {
+    try {
+      if (!formData.name || !formData.email || !formData.phone || !formData.contactPerson) {
+        alert('Please fill all required fields');
+        return;
+      }
+      
+      const response = await request("PUT", `/api/admin/suppliers/${editingSupplier._id}`, formData);
+      if (response?.success) {
+        alert('Supplier updated successfully!');
+        setFormData({ name: '', email: '', phone: '', contactPerson: '', address: '' });
+        setShowEditModal(false);
+        setEditingSupplier(null);
+        fetchSuppliers();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      alert('Failed to update supplier');
+    }
+  };
+
+  const handleDeleteSupplier = async (supplierId) => {
+    if (!window.confirm('Are you sure you want to delete this supplier?')) return;
+    
+    try {
+      const response = await request("DELETE", `/api/admin/suppliers/${supplierId}`);
+      if (response?.success) {
+        alert('Supplier deleted successfully!');
+        fetchSuppliers();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      alert('Failed to delete supplier');
+    }
+  };
+
+  const handleApproveSupplier = async () => {
+    try {
+      if (approvalData.status === 'REJECTED' && !approvalData.rejectionReason) {
+        alert('Please provide a rejection reason');
+        return;
+      }
+      
+      const response = await request("PATCH", `/api/admin/suppliers/${approvingSupplier._id}/approve`, approvalData);
+      if (response?.success) {
+        alert(`Supplier ${approvalData.status} successfully!`);
+        setShowApprovalModal(false);
+        setApprovingSupplier(null);
+        setApprovalData({ status: 'APPROVED', rejectionReason: '' });
+        fetchSuppliers();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error("Error updating supplier status:", error);
+      alert('Failed to update supplier status');
+    }
+  };
+
+  const openEditModal = (supplier) => {
+    setEditingSupplier(supplier);
+    setFormData({
+      name: supplier.name,
+      email: supplier.email,
+      phone: supplier.phone,
+      contactPerson: supplier.contactPerson,
+      address: supplier.address
+    });
+    setShowEditModal(true);
+  };
+
+  const openApprovalModal = (supplier) => {
+    setApprovingSupplier(supplier);
+    setApprovalData({ status: 'APPROVED', rejectionReason: '' });
+    setShowApprovalModal(true);
   };
 
   const getStatusColor = (status) => {
@@ -331,6 +451,10 @@ export default function Suppliers() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setFormData({ name: '', email: '', phone: '', contactPerson: '', address: '' });
+                setShowAddModal(true);
+              }}
               className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-4 rounded-xl font-semibold shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_50px_rgba(99,102,241,0.5)] transition-all"
             >
               <Plus className="w-5 h-5" />
@@ -414,18 +538,39 @@ export default function Suppliers() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10 gap-3">
                     <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ${getStatusColor(supplier.status)}`}>
                       {getStatusIcon(supplier.status)}
                       {supplier.status?.toUpperCase()}
                     </span>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
-                    >
-                      View Details →
-                    </motion.button>
+                    <div className="flex gap-2">
+                      {supplier.status?.toUpperCase() === 'PENDING' && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => openApprovalModal(supplier)}
+                          className="px-3 py-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium"
+                        >
+                          Approve
+                        </motion.button>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => openEditModal(supplier)}
+                        className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                      >
+                        Edit
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDeleteSupplier(supplier._id)}
+                        className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                      >
+                        Delete
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -467,6 +612,244 @@ export default function Suppliers() {
           </motion.button>
         </motion.div>
       )}
+
+      {/* Add Supplier Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 w-full max-w-md border border-white/10"
+            >
+              <h2 className="text-2xl font-bold text-white mb-4">Add New Supplier</h2>
+              
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Supplier Name *"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="email"
+                  placeholder="Email *"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone *"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Contact Person *"
+                  value={formData.contactPerson}
+                  onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleAddSupplier}
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-semibold"
+                >
+                  {loading ? 'Adding...' : 'Add Supplier'}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-xl font-semibold"
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Supplier Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 w-full max-w-md border border-white/10"
+            >
+              <h2 className="text-2xl font-bold text-white mb-4">Edit Supplier</h2>
+              
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Supplier Name *"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="email"
+                  placeholder="Email *"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone *"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Contact Person *"
+                  value={formData.contactPerson}
+                  onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleUpdateSupplier}
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-semibold"
+                >
+                  {loading ? 'Updating...' : 'Update Supplier'}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-xl font-semibold"
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Approval Modal */}
+      <AnimatePresence>
+        {showApprovalModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowApprovalModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 w-full max-w-md border border-white/10"
+            >
+              <h2 className="text-2xl font-bold text-white mb-4">
+                {approvingSupplier?.name}
+              </h2>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-white text-sm font-semibold mb-2">
+                    Decision
+                  </label>
+                  <select
+                    value={approvalData.status}
+                    onChange={(e) => setApprovalData({ ...approvalData, status: e.target.value })}
+                    className="w-full bg-white/5 text-white px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none"
+                  >
+                    <option value="APPROVED">Approve</option>
+                    <option value="REJECTED">Reject</option>
+                  </select>
+                </div>
+
+                {approvalData.status === 'REJECTED' && (
+                  <div>
+                    <label className="block text-white text-sm font-semibold mb-2">
+                      Rejection Reason *
+                    </label>
+                    <textarea
+                      placeholder="Please provide a reason for rejection"
+                      value={approvalData.rejectionReason}
+                      onChange={(e) => setApprovalData({ ...approvalData, rejectionReason: e.target.value })}
+                      className="w-full bg-white/5 text-white placeholder-white/30 px-4 py-3 rounded-xl border border-white/10 focus:border-indigo-500/50 focus:outline-none resize-none"
+                      rows="4"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleApproveSupplier}
+                  disabled={loading}
+                  className={`flex-1 ${approvalData.status === 'APPROVED' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'} disabled:opacity-50 text-white px-4 py-3 rounded-xl font-semibold`}
+                >
+                  {loading ? 'Processing...' : approvalData.status === 'APPROVED' ? 'Approve' : 'Reject'}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowApprovalModal(false)}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-xl font-semibold"
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

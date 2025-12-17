@@ -69,9 +69,21 @@ const getSupplierById = async (req, res) => {
 // Add new supplier
 const addSupplier = async (req, res) => {
   try {
+    const { name, email, phone, contactPerson, address, status } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !phone || !contactPerson) {
+      return errorResponse(res, 400, 'Missing required fields: name, email, phone, contactPerson');
+    }
+
     const supplierData = {
-      ...req.body,
-      createdBy: req.user._id // From auth middleware
+      name,
+      email,
+      phone,
+      contactPerson,
+      address,
+      status: status || 'PENDING',
+      createdBy: req.user._id
     };
     
     const supplier = await SupplierModel.create(supplierData);
@@ -96,15 +108,29 @@ const addSupplier = async (req, res) => {
   }
 };
 
-// Update supplier - ADD THIS ENTIRE FUNCTION HERE
+// Update supplier
 const updateSupplier = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
     
+    // Remove protected fields
     delete updateData.createdBy;
     delete updateData.approvedBy;
     delete updateData.approvedAt;
+    delete updateData._id;
+    
+    // Validate required fields if provided
+    const allowedFields = ['name', 'email', 'phone', 'contactPerson', 'address'];
+    Object.keys(updateData).forEach(key => {
+      if (!allowedFields.includes(key)) {
+        delete updateData[key];
+      }
+    });
+
+    if (Object.keys(updateData).length === 0) {
+      return errorResponse(res, 400, 'No valid fields to update');
+    }
     
     const supplier = await SupplierModel.findByIdAndUpdate(
       id,
@@ -143,13 +169,13 @@ const approveSupplier = async (req, res) => {
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
     
-    // Validate status (case-insensitive)
-    if (!['approved', 'rejected'].includes(status.toLowerCase())) {
-      return errorResponse(res, 400, 'Status must be either "approved" or "rejected"');
+    // Validate status
+    if (!status || !['APPROVED', 'REJECTED', 'approved', 'rejected'].includes(status)) {
+      return errorResponse(res, 400, 'Status must be either "APPROVED" or "REJECTED"');
     }
     
     // Require rejection reason when rejecting
-    if (status.toLowerCase() === 'rejected' && !rejectionReason) {
+    if (status.toUpperCase() === 'REJECTED' && !rejectionReason) {
       return errorResponse(res, 400, 'Rejection reason is required when rejecting a supplier');
     }
     
@@ -159,29 +185,28 @@ const approveSupplier = async (req, res) => {
       return errorResponse(res, 404, 'Supplier not found');
     }
     
-    // Check if already processed (case-insensitive)
-    if (supplier.status.toLowerCase() !== 'pending') {
-      return errorResponse(res, 400, `Supplier is already ${supplier.status.toLowerCase()}`);
+    // Check if already processed
+    if (supplier.status !== 'PENDING') {
+      return errorResponse(res, 400, `Supplier is already ${supplier.status}`);
     }
     
-    // Update supplier status (convert to uppercase to match your database)
+    // Update supplier status
     supplier.status = status.toUpperCase();
     supplier.approvedBy = req.user._id;
     supplier.approvedAt = new Date();
     
-    if (status.toLowerCase() === 'rejected') {
+    if (status.toUpperCase() === 'REJECTED') {
       supplier.rejectionReason = rejectionReason;
     }
     
     await supplier.save();
     
-    return successResponse(res, 200, `Supplier ${status.toLowerCase()} successfully`, supplier);
+    return successResponse(res, 200, `Supplier ${status.toUpperCase()} successfully`, supplier);
   } catch (error) {
     console.error('Approve supplier error:', error);
     return errorResponse(res, 500, 'Failed to update supplier status', error.message);
   }
 };
-    
 
 // Delete supplier
 const deleteSupplier = async (req, res) => {
@@ -194,17 +219,7 @@ const deleteSupplier = async (req, res) => {
       return errorResponse(res, 404, 'Supplier not found');
     }
     
-    // Check if supplier has active orders/shipments
-    // You can add this check when shipment model is ready
-    // const activeShipments = await ShipmentModel.countDocuments({ 
-    //   supplier: id, 
-    //   status: { $in: ['pending', 'processing', 'shipped'] } 
-    // });
-    // if (activeShipments > 0) {
-    //   return errorResponse(res, 400, 'Cannot delete supplier with active shipments');
-    // }
-    
-    await supplier.deleteOne();
+    await SupplierModel.findByIdAndDelete(id);
     
     return successResponse(res, 200, 'Supplier deleted successfully');
   } catch (error) {
@@ -234,7 +249,10 @@ const getSupplierStats = async (req, res) => {
     };
     
     stats.forEach(stat => {
-      formattedStats[stat._id] = stat.count;
+      const statusKey = stat._id.toLowerCase();
+      if (statusKey in formattedStats) {
+        formattedStats[statusKey] = stat.count;
+      }
     });
     
     return successResponse(res, 200, 'Supplier statistics fetched', formattedStats);

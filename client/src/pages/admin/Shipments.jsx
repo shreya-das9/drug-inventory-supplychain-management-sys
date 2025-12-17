@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useApi } from "../../hooks/useApi";
 import { 
   Truck, 
   Plus, 
@@ -16,11 +17,11 @@ import {
   TrendingUp,
   Navigation
 } from "lucide-react";
-import axios from "axios";
 
 export default function Shipments() {
+  const { request, loading } = useApi();
+  
   const [shipments, setShipments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,49 +29,50 @@ export default function Shipments() {
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 12;
   const [stats, setStats] = useState({
-    total: 0,
+    totalShipments: 0,
     pending: 0,
-    inTransit: 0,
+    in_transit: 0,
     delivered: 0,
-    totalValue: 0
+    totalValue: 0,
+    delayedShipments: 0
   });
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
     fetchShipments();
     fetchStats();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, searchQuery]);
 
   const fetchShipments = async () => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const url = statusFilter === "all" 
-        ? `http://localhost:5000/api/admin/shipments?page=${currentPage}&limit=${itemsPerPage}`
-        : `http://localhost:5000/api/admin/shipments?status=${statusFilter}&page=${currentPage}&limit=${itemsPerPage}`;
+      let url = `/api/admin/shipments?page=${currentPage}&limit=${itemsPerPage}`;
+      if (searchQuery) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
+      }
+      if (statusFilter !== "all") {
+        url += `&status=${statusFilter}`;
+      }
       
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await request("GET", url);
       
-      setShipments(response.data.data || []);
-      setTotalPages(response.data.pagination?.totalPages || 1);
-      setTotalItems(response.data.pagination?.totalItems || 0);
-      setLastUpdate(new Date());
+      if (response?.success || response?.data) {
+        const data = response.data || response;
+        setShipments(data.shipments || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalItems(data.pagination?.totalItems || 0);
+        setLastUpdate(new Date());
+      }
     } catch (error) {
       console.error("Error fetching shipments:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/shipments/stats", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStats(response.data.data);
+      const response = await request("GET", "/api/admin/shipments/stats");
+      if (response?.success || response?.data) {
+        setStats(response.data || response);
+      }
     } catch (error) {
       console.error("Error fetching stats:", error);
     }

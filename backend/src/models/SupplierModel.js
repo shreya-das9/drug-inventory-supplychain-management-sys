@@ -24,6 +24,11 @@ const SupplierSchema = new mongoose.Schema({
   approvedAt: {
     type: Date,
     default: null
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, { timestamps: true });
 

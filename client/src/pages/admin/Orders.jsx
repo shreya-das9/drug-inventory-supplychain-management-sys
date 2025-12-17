@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useApi } from "../../hooks/useApi";
 import { 
   FileText, 
   Plus, 
@@ -18,11 +19,11 @@ import {
   Zap,
   ArrowUpRight
 } from "lucide-react";
-import axios from "axios";
 
 export default function Orders() {
+  const { request, loading } = useApi();
+  
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,38 +44,38 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders();
     fetchStats();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, searchQuery]);
 
   const fetchOrders = async () => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const url = statusFilter === "all" 
-        ? `http://localhost:5000/api/admin/orders?page=${currentPage}&limit=${itemsPerPage}`
-        : `http://localhost:5000/api/admin/orders?status=${statusFilter}&page=${currentPage}&limit=${itemsPerPage}`;
+      let url = `/api/admin/orders?page=${currentPage}&limit=${itemsPerPage}`;
+      if (searchQuery) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
+      }
+      if (statusFilter !== "all") {
+        url += `&status=${statusFilter}`;
+      }
       
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await request("GET", url);
       
-      setOrders(response.data.data?.orders || []);
-      setTotalPages(response.data.data?.pagination?.totalPages || 1);
-      setTotalItems(response.data.data?.pagination?.totalItems || 0);
-      setLastUpdate(new Date());
+      if (response?.success || response?.data) {
+        const data = response.data || response;
+        setOrders(data.orders || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalItems(data.pagination?.totalItems || 0);
+        setLastUpdate(new Date());
+      }
     } catch (error) {
       console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/orders/stats", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStats(response.data.data);
+      const response = await request("GET", "/api/admin/orders/stats");
+      if (response?.success || response?.data) {
+        setStats(response.data || response);
+      }
     } catch (error) {
       console.error("Error fetching stats:", error);
     }

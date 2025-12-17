@@ -1,10 +1,12 @@
 import ShipmentModel from '../models/ShipmentModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import Drug from '../models/Drug.js';
+import { successResponse, errorResponse } from '../utils/response.js';
 
 // Get all shipments
 const getAllShipments = async (req, res) => {
   try {
+    console.log('getAllShipments called with query:', req.query);
     const { 
       status, 
       supplier, 
@@ -28,6 +30,7 @@ const getAllShipments = async (req, res) => {
     
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
+    console.log('Executing query:', query);
     const shipments = await ShipmentModel.find(query)
       .populate('supplier', 'name email phone contactPerson')
       .populate('items.drug', 'name genericName manufacturer')
@@ -37,28 +40,22 @@ const getAllShipments = async (req, res) => {
       .skip(skip)
       .select('-__v');
     
+    console.log(`Found ${shipments.length} shipments`);
     const total = await ShipmentModel.countDocuments(query);
+    console.log(`Total shipments in DB: ${total}`);
     
-    return res.status(200).json({
-      success: true,
-      message: 'Shipments fetched successfully',
-      count: shipments.length,
-      total,
+    return successResponse(res, 200, 'Shipments fetched successfully', {
+      shipments,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
         totalItems: total,
         itemsPerPage: parseInt(limit)
-      },
-      data: shipments
+      }
     });
   } catch (error) {
     console.error('Get shipments error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch shipments',
-      error: error.message
-    });
+    return errorResponse(res, 500, 'Failed to fetch shipments', error.message);
   }
 };
 
@@ -74,73 +71,80 @@ const getShipmentById = async (req, res) => {
       .populate('statusHistory.updatedBy', 'name email');
     
     if (!shipment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Shipment not found'
-      });
+      return errorResponse(res, 404, 'Shipment not found');
     }
     
-    return res.status(200).json({
-      success: true,
-      message: 'Shipment fetched successfully',
-      data: shipment
-    });
+    return successResponse(res, 200, 'Shipment fetched successfully', shipment);
   } catch (error) {
     console.error('Get shipment error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch shipment',
-      error: error.message
-    });
+    return errorResponse(res, 500, 'Failed to fetch shipment', error.message);
   }
 };
 
 // Create new shipment
 const createShipment = async (req, res) => {
   try {
-    const { supplier, items, expectedDeliveryDate, shippingMethod } = req.body;
+    const { supplier, items, expectedDeliveryDate, origin, destination } = req.body;
     
-    // Verify supplier exists and is approved
+    // Validate required fields
+    if (!supplier) {
+      return errorResponse(res, 400, 'Supplier ID is required');
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return errorResponse(res, 400, 'Items array is required with at least one item');
+    }
+    
+    // Verify supplier exists
     const supplierDoc = await SupplierModel.findById(supplier);
     if (!supplierDoc) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supplier not found'
-      });
+      return errorResponse(res, 404, 'Supplier not found');
     }
     
-    if (supplierDoc.status.toLowerCase() !== 'approved') {
-      return res.status(400).json({
-        success: false,
-        message: 'Can only create shipments with approved suppliers'
-      });
-    }
-    
-    // Verify all drugs exist
-    const drugIds = items.map(item => item.drug);
-    const drugs = await Drug.find({ _id: { $in: drugIds } });
-    
-    if (drugs.length !== drugIds.length) {
-      return res.status(404).json({
-        success: false,
-        message: 'One or more drugs not found'
-      });
-    }
-    
-    // Calculate total amount
+    // Calculate total amount and validate items
     let totalAmount = 0;
-    items.forEach(item => {
-      totalAmount += item.quantity * item.unitPrice;
-    });
+    const validatedItems = [];
+    
+    for (const item of items) {
+      if (!item.drug || !item.quantity) {
+        return errorResponse(res, 400, 'Each item must have drug ID and quantity');
+      }
+      
+      const drug = await Drug.findById(item.drug);
+      if (!drug) {
+        return errorResponse(res, 404, `Drug ${item.drug} not found`);
+      }
+      
+      const quantity = parseInt(item.quantity);
+      const unitPrice = parseInt(item.unitPrice || item.price) || 100;
+      
+      validatedItems.push({
+        drug: item.drug,
+        quantity,
+        unitPrice,
+        subtotal: quantity * unitPrice
+      });
+      
+      totalAmount += quantity * unitPrice;
+    }
+    
+    // Generate tracking number
+    const trackingNumber = `TRK-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     
     // Create shipment
     const shipmentData = {
-      ...req.body,
+      trackingNumber,
+      supplier,
+      items: validatedItems,
+      expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      origin: origin || { city: 'Mumbai', state: 'Maharashtra', address: 'Origin Warehouse' },
+      destination: destination || { city: 'Delhi', state: 'Delhi', address: 'Destination Warehouse' },
       totalAmount,
-      createdBy: req.user.id || req.user._id,
+      status: 'pending',
+      createdBy: req.user._id,
       statusHistory: [{
         status: 'pending',
-        updatedBy: req.user.id || req.user._id,
+        updatedBy: req.user._id,
         notes: 'Shipment created',
         timestamp: new Date()
       }]
@@ -148,32 +152,73 @@ const createShipment = async (req, res) => {
     
     const shipment = await ShipmentModel.create(shipmentData);
     
-    // Update supplier's total orders
-    supplierDoc.totalOrders = (supplierDoc.totalOrders || 0) + 1;
-    await supplierDoc.save();
+    // Populate before returning
+    const populated = await ShipmentModel.findById(shipment._id)
+      .populate('supplier', 'name email phone')
+      .populate('items.drug', 'name genericName');
     
-    return res.status(201).json({
-      success: true,
-      message: 'Shipment created successfully',
-      data: shipment
-    });
+    return successResponse(res, 201, 'Shipment created successfully', populated);
   } catch (error) {
     console.error('Create shipment error:', error);
     
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: messages
-      });
+      return errorResponse(res, 400, 'Validation failed', messages);
     }
     
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create shipment',
-      error: error.message
+    return errorResponse(res, 500, 'Failed to create shipment', error.message);
+  }
+};
+
+// Update shipment
+const updateShipment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    // Remove protected fields
+    delete updateData.createdBy;
+    delete updateData.statusHistory;
+    delete updateData._id;
+    delete updateData.trackingNumber;
+    delete updateData.status;
+    
+    const allowedFields = ['expectedDeliveryDate', 'origin', 'destination'];
+    Object.keys(updateData).forEach(key => {
+      if (!allowedFields.includes(key)) {
+        delete updateData[key];
+      }
     });
+    
+    if (Object.keys(updateData).length === 0) {
+      return errorResponse(res, 400, 'No valid fields to update');
+    }
+    
+    // Format dates if present
+    if (updateData.expectedDeliveryDate) {
+      updateData.expectedDeliveryDate = new Date(updateData.expectedDeliveryDate);
+    }
+    
+    const shipment = await ShipmentModel.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('supplier', 'name email phone').populate('items.drug', 'name genericName');
+    
+    if (!shipment) {
+      return errorResponse(res, 404, 'Shipment not found');
+    }
+    
+    return successResponse(res, 200, 'Shipment updated successfully', shipment);
+  } catch (error) {
+    console.error('Update shipment error:', error);
+    
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return errorResponse(res, 400, 'Validation failed', messages);
+    }
+    
+    return errorResponse(res, 500, 'Failed to update shipment', error.message);
   }
 };
 
@@ -186,93 +231,57 @@ const updateShipmentStatus = async (req, res) => {
     const validStatuses = ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'];
     
     if (!validStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
-      });
+      return errorResponse(res, 400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
     
     const shipment = await ShipmentModel.findById(id);
     
     if (!shipment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Shipment not found'
-      });
+      return errorResponse(res, 404, 'Shipment not found');
     }
     
     // Check if shipment is already in final state
     if (['delivered', 'cancelled'].includes(shipment.status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot modify ${shipment.status} shipment`
-      });
+      return errorResponse(res, 400, `Cannot modify ${shipment.status} shipment`);
     }
     
-    // ✅ ADD STATUS TRANSITION VALIDATION
+    // Status transition validation
     const validTransitions = {
-      'pending': ['processing', 'shipped', 'cancelled'],
-      'processing': ['shipped', 'in_transit', 'cancelled'],
+      'pending': ['processing', 'shipped', 'in_transit', 'delivered', 'cancelled'],
+      'processing': ['shipped', 'in_transit', 'delivered', 'cancelled'],
       'shipped': ['in_transit', 'delivered', 'cancelled'],
       'in_transit': ['delivered', 'cancelled'],
-      'delivered': [],  // Final state
-      'cancelled': []   // Final state
+      'delivered': [],
+      'cancelled': []
     };
     
     const currentStatus = shipment.status.toLowerCase();
     const newStatus = status.toLowerCase();
     
-    // Check if transition is valid
     if (!validTransitions[currentStatus].includes(newStatus)) {
-      let errorMessage = `Cannot change status from ${currentStatus.toUpperCase()} to ${newStatus.toUpperCase()}.`;
-      
-      // Provide helpful error messages
-      if (currentStatus === 'pending' && newStatus === 'delivered') {
-        errorMessage += ' Must go through SHIPPED first.';
-      } else if (currentStatus === 'pending' && newStatus === 'in_transit') {
-        errorMessage += ' Must go through PROCESSING or SHIPPED first.';
-      } else if (currentStatus === 'processing' && newStatus === 'delivered') {
-        errorMessage += ' Must go through SHIPPED or IN_TRANSIT first.';
-      } else if (currentStatus === 'shipped' && newStatus === 'pending') {
-        errorMessage += ' Cannot go backwards to PENDING.';
-      } else {
-        errorMessage += ` Valid transitions from ${currentStatus.toUpperCase()} are: ${validTransitions[currentStatus].map(s => s.toUpperCase()).join(', ')}.`;
-      }
-      
-      return res.status(400).json({
-        success: false,
-        message: errorMessage
-      });
+      return errorResponse(res, 400, `Cannot change status from ${currentStatus} to ${newStatus}. Valid transitions: ${validTransitions[currentStatus].join(', ')}`);
     }
     
     const oldStatus = shipment.status;
-    shipment.status = status.toLowerCase();
+    shipment.status = newStatus;
     
-    if (status.toLowerCase() === 'delivered') {
+    if (newStatus === 'delivered') {
       shipment.actualDeliveryDate = new Date();
     }
     
     shipment.statusHistory.push({
-      status,
-      updatedBy: req.user.id || req.user._id,
-      notes: notes || `Status changed from ${oldStatus} to ${status}`,
+      status: newStatus,
+      updatedBy: req.user._id,
+      notes: notes || `Status changed from ${oldStatus} to ${newStatus}`,
       timestamp: new Date()
     });
     
     await shipment.save();
     
-    return res.status(200).json({
-      success: true,
-      message: 'Shipment status updated successfully',
-      data: shipment
-    });
+    return successResponse(res, 200, 'Shipment status updated successfully', shipment);
   } catch (error) {
     console.error('Update shipment status error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to update shipment status',
-      error: error.message
-    });
+    return errorResponse(res, 500, 'Failed to update shipment status', error.message);
   }
 };
 
@@ -284,38 +293,26 @@ const deleteShipment = async (req, res) => {
     const shipment = await ShipmentModel.findById(id);
     
     if (!shipment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Shipment not found'
-      });
+      return errorResponse(res, 404, 'Shipment not found');
     }
     
     if (shipment.status === 'delivered') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete delivered shipments. Cancel instead.'
-      });
+      return errorResponse(res, 400, 'Cannot delete delivered shipments. Cancel instead.');
     }
     
-    await shipment.deleteOne();
+    await ShipmentModel.findByIdAndDelete(id);
     
-    return res.status(200).json({
-      success: true,
-      message: 'Shipment deleted successfully'
-    });
+    return successResponse(res, 200, 'Shipment deleted successfully');
   } catch (error) {
     console.error('Delete shipment error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to delete shipment',
-      error: error.message
-    });
+    return errorResponse(res, 500, 'Failed to delete shipment', error.message);
   }
 };
 
 // Get shipment statistics
 const getShipmentStats = async (req, res) => {
   try {
+    console.log('getShipmentStats called');
     const stats = await ShipmentModel.aggregate([
       {
         $group: {
@@ -326,7 +323,10 @@ const getShipmentStats = async (req, res) => {
       }
     ]);
     
+    console.log('Stats aggregation result:', stats);
     const totalShipments = await ShipmentModel.countDocuments();
+    console.log('Total shipments in DB:', totalShipments);
+    
     const totalValue = await ShipmentModel.aggregate([
       { $group: { _id: null, total: { $sum: '$totalAmount' } } }
     ]);
@@ -336,23 +336,32 @@ const getShipmentStats = async (req, res) => {
       expectedDeliveryDate: { $lt: new Date() }
     });
     
-    return res.status(200).json({
-      success: true,
-      message: 'Shipment statistics fetched',
-      data: {
-        totalShipments,
-        totalValue: totalValue[0]?.total || 0,
-        delayedShipments: delayedCount,
-        byStatus: stats
+    const formattedStats = {
+      total: totalShipments,
+      totalValue: totalValue[0]?.total || 0,
+      delayed: delayedCount,
+      pending: 0,
+      processing: 0,
+      shipped: 0,
+      inTransit: 0,
+      delivered: 0,
+      cancelled: 0
+    };
+    
+    stats.forEach(stat => {
+      const statusKey = stat._id.toLowerCase();
+      if (statusKey === 'in_transit') {
+        formattedStats.inTransit = stat.count;
+      } else if (statusKey in formattedStats) {
+        formattedStats[statusKey] = stat.count;
       }
     });
+    
+    console.log('Formatted stats:', formattedStats);
+    return successResponse(res, 200, 'Shipment statistics fetched', formattedStats);
   } catch (error) {
     console.error('Get shipment stats error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch statistics',
-      error: error.message
-    });
+    return errorResponse(res, 500, 'Failed to fetch statistics', error.message);
   }
 };
 
@@ -361,6 +370,7 @@ export default {
   getShipmentById,
   createShipment,
   updateShipmentStatus,
+  updateShipment,
   deleteShipment,
   getShipmentStats
 };

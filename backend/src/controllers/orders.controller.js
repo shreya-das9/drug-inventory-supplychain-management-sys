@@ -1,45 +1,38 @@
 import OrderModel from '../models/OrderModel.js';
-import SupplierModel from '../models/SupplierModel.js';
-import DrugModel from '../models/Drug.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
-// Get all orders with filtering and pagination
+// Get all orders
 const getAllOrders = async (req, res) => {
   try {
-    const { status, supplier, search, page = 1, limit = 10, sortBy = '-createdAt' } = req.query;
+    console.log('getAllOrders called with query:', req.query);
+    const { 
+      status, 
+      paymentStatus,
+      page = 1, 
+      limit = 10,
+      sortBy = '-createdAt'
+    } = req.query;
     
-    // Build query
     const query = {};
     
-    if (status) {
-      query.status = status.toLowerCase();
-    }
+    if (status) query.status = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
     
-    if (supplier) {
-      query.supplier = supplier;
-    }
-    
-    if (search) {
-      query.$or = [
-        { orderNumber: { $regex: search, $options: 'i' } },
-        { purchaseOrderNumber: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    // Execute query
+    console.log('Executing query:', query);
     const orders = await OrderModel.find(query)
-      .populate('supplier', 'name email contactPerson')
-      .populate('approvedBy', 'name email')
-      .populate('items.drug', 'name genericName')
+      .populate('user', 'name email phone')
+      .populate('supplier', 'name email phone')
+      .populate('items.drug', 'name genericName manufacturer')
       .sort(sortBy)
       .limit(parseInt(limit))
       .skip(skip)
       .select('-__v');
     
+    console.log(`Found ${orders.length} orders`);
     const total = await OrderModel.countDocuments(query);
+    console.log(`Total orders in DB: ${total}`);
     
     return successResponse(res, 200, 'Orders fetched successfully', {
       orders,
@@ -62,10 +55,9 @@ const getOrderById = async (req, res) => {
     const { id } = req.params;
     
     const order = await OrderModel.findById(id)
-      .populate('supplier', 'name email contactPerson phone address')
-      .populate('approvedBy', 'name email')
-      .populate('items.drug', 'name genericName manufacturer')
-      .populate('createdBy', 'name email');
+      .populate('user')
+      .populate('supplier')
+      .populate('items.drug');
     
     if (!order) {
       return errorResponse(res, 404, 'Order not found');
@@ -78,75 +70,16 @@ const getOrderById = async (req, res) => {
   }
 };
 
-// Create new order
-const createOrder = async (req, res) => {
-  try {
-    const orderData = {
-      ...req.body,
-      createdBy: req.user._id
-    };
-    
-    // Normalize status to lowercase if provided
-    if (orderData.status) {
-      orderData.status = orderData.status.toLowerCase();
-    }
-    
-    // Verify supplier exists and is approved (if supplier is provided)
-    if (orderData.supplier) {
-      const supplier = await SupplierModel.findById(orderData.supplier);
-      if (!supplier) {
-        return errorResponse(res, 404, 'Supplier not found');
-      }
-      if (supplier.status !== 'approved') {
-        return errorResponse(res, 400, 'Can only create orders from approved suppliers');
-      }
-    }
-    
-    // Verify all drugs exist
-    for (const item of orderData.items) {
-      const drug = await DrugModel.findById(item.drug);
-      if (!drug) {
-        return errorResponse(res, 404, `Drug with ID ${item.drug} not found`);
-      }
-    }
-    
-    const order = await OrderModel.create(orderData);
-    
-    // Populate the created order
-    await order.populate([
-      { path: 'supplier', select: 'name email contactPerson' },
-      { path: 'items.drug', select: 'name genericName' }
-    ]);
-    
-    return successResponse(res, 201, 'Order created successfully', order);
-  } catch (error) {
-    console.error('Create order error:', error);
-    
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return errorResponse(res, 400, 'Validation failed', messages);
-    }
-    
-    return errorResponse(res, 500, 'Failed to create order', error.message);
-  }
-};
-
 // Update order status
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    let { status, notes } = req.body;
+    const { status } = req.body;
     
-    // Normalize status to lowercase
-    if (status) {
-      status = status.toLowerCase().trim();
-    }
+    const validStatuses = ['pending', 'approved', 'processing', 'completed', 'cancelled'];
     
-    // Validate status
-    const validStatuses = ['pending', 'approved', 'processing', 'completed', 'cancelled', 'confirmed', 'shipped', 'delivered'];
-    if (!validStatuses.includes(status)) {
-      return errorResponse(res, 400, `Status must be one of: ${validStatuses.join(', ')}`);
+    if (!validStatuses.includes(status.toLowerCase())) {
+      return errorResponse(res, 400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
     
     const order = await OrderModel.findById(id);
@@ -155,71 +88,19 @@ const updateOrderStatus = async (req, res) => {
       return errorResponse(res, 404, 'Order not found');
     }
     
-    // Update status
-    order.status = status;
-    
-    if (status === 'approved') {
-      order.approvedBy = req.user._id;
-      order.approvedAt = new Date();
+    // Prevent status change if already delivered or cancelled
+    if (['completed', 'cancelled'].includes(order.status)) {
+      return errorResponse(res, 400, `Cannot modify ${order.status} order`);
     }
     
-    if (status === 'delivered') {
-      order.deliveredAt = new Date();
-    }
-    
-    if (status === 'cancelled' && notes) {
-      order.cancellationReason = notes;
-    }
-    
-    if (notes) {
-      order.notes = notes;
-    }
-    
-    // Add to status history
-    order.statusHistory.push({
-      status: status,
-      timestamp: new Date(),
-      updatedBy: req.user._id,
-      notes: notes || ''
-    });
-    
+    const oldStatus = order.status;
+    order.status = status.toLowerCase();
     await order.save();
     
-    // Populate before sending response
-    await order.populate([
-      { path: 'supplier', select: 'name email' },
-      { path: 'approvedBy', select: 'name email' }
-    ]);
-    
-    return successResponse(res, 200, 'Order status updated successfully', order);
+    return successResponse(res, 200, `Order status updated from ${oldStatus} to ${status}`, order);
   } catch (error) {
     console.error('Update order status error:', error);
     return errorResponse(res, 500, 'Failed to update order status', error.message);
-  }
-};
-
-// Delete order
-const deleteOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const order = await OrderModel.findById(id);
-    
-    if (!order) {
-      return errorResponse(res, 404, 'Order not found');
-    }
-    
-    // Only allow deletion of pending or cancelled orders
-    if (!['pending', 'cancelled'].includes(order.status)) {
-      return errorResponse(res, 400, 'Can only delete pending or cancelled orders');
-    }
-    
-    await order.deleteOne();
-    
-    return successResponse(res, 200, 'Order deleted successfully');
-  } catch (error) {
-    console.error('Delete order error:', error);
-    return errorResponse(res, 500, 'Failed to delete order', error.message);
   }
 };
 
@@ -235,26 +116,16 @@ const cancelOrder = async (req, res) => {
       return errorResponse(res, 404, 'Order not found');
     }
     
-    // Check if order can be cancelled
-    if (['completed', 'cancelled', 'delivered'].includes(order.status)) {
-      return errorResponse(res, 400, `Cannot cancel ${order.status} order`);
+    if (order.status === 'completed') {
+      return errorResponse(res, 400, 'Cannot cancel completed orders');
     }
     
-    // Update order status
+    if (order.status === 'cancelled') {
+      return errorResponse(res, 400, 'Order is already cancelled');
+    }
+    
     order.status = 'cancelled';
-    if (reason) {
-      order.cancellationReason = reason;
-      order.notes = reason;
-    }
-    
-    // Add to status history
-    order.statusHistory.push({
-      status: 'cancelled',
-      timestamp: new Date(),
-      updatedBy: req.user._id,
-      notes: reason || 'Order cancelled'
-    });
-    
+    order.cancellationReason = reason || 'Cancelled by admin';
     await order.save();
     
     return successResponse(res, 200, 'Order cancelled successfully', order);
@@ -267,6 +138,8 @@ const cancelOrder = async (req, res) => {
 // Get order statistics
 const getOrderStats = async (req, res) => {
   try {
+    console.log('getOrderStats called');
+    
     const stats = await OrderModel.aggregate([
       {
         $group: {
@@ -277,26 +150,33 @@ const getOrderStats = async (req, res) => {
       }
     ]);
     
+    console.log('Stats aggregation result:', stats);
+    
+    const totalOrders = await OrderModel.countDocuments();
+    console.log('Total orders in DB:', totalOrders);
+    
+    const totalValue = await OrderModel.aggregate([
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    ]);
+    
     const formattedStats = {
-      total: await OrderModel.countDocuments(),
+      total: totalOrders,
+      totalValue: totalValue[0]?.total || 0,
       pending: 0,
       approved: 0,
       processing: 0,
       completed: 0,
-      cancelled: 0,
-      confirmed: 0,
-      shipped: 0,
-      delivered: 0,
-      totalValue: 0
+      cancelled: 0
     };
     
     stats.forEach(stat => {
-      if (stat._id) {
-        formattedStats[stat._id] = stat.count;
-        formattedStats.totalValue += stat.totalValue || 0;
+      const statusKey = stat._id.toLowerCase();
+      if (statusKey in formattedStats) {
+        formattedStats[statusKey] = stat.count;
       }
     });
     
+    console.log('Formatted stats:', formattedStats);
     return successResponse(res, 200, 'Order statistics fetched', formattedStats);
   } catch (error) {
     console.error('Get order stats error:', error);
@@ -307,9 +187,7 @@ const getOrderStats = async (req, res) => {
 export default {
   getAllOrders,
   getOrderById,
-  createOrder,
   updateOrderStatus,
-  deleteOrder,
   cancelOrder,
   getOrderStats
 };

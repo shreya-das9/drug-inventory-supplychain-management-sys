@@ -2,14 +2,14 @@ import express from 'express';
 const router = express.Router();
 
 // Import middleware (FIXED PATHS)
-import { verifyToken, isAdmin } from '../../middleware/auth.middleware.js';
+import { verifyToken, isWarehouseAdmin } from '../../middleware/auth.middleware.js';
 
 // Import controller
 import supplierController from '../../controllers/suppliers.controller.js';
 
 // Apply authentication and admin role to all routes
 router.use(verifyToken);
-router.use(isAdmin);
+router.use(isWarehouseAdmin);
 
 // GET /api/admin/suppliers/stats - Get supplier statistics
 router.get('/stats', supplierController.getSupplierStats);
