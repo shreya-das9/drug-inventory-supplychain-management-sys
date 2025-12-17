@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
+import Logout from "../pages/auth/Logout";
 import AdminLayout from "../pages/admin/AdminLayout";
 import AdminDashboard from "../pages/admin/Dashboard";
 import AdminDrugs from "../pages/admin/Drugs";
@@ -18,6 +19,7 @@ export default function AppRouter() {
         {/* Public */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/logout" element={<Logout />} />
 
         {/* Admin Layout with nested routes */}
         <Route 

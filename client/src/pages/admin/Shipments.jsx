@@ -261,10 +261,10 @@ export default function Shipments() {
           },
           { 
             label: "Total Value", 
-            value: `$${stats.totalValue?.toLocaleString() || 0}`, 
+            value: `₹${stats.totalValue?.toLocaleString() || 0}`, 
             gradient: "from-purple-500/20 via-pink-500/20 to-rose-500/20",
             border: "border-purple-500/30",
-            icon: <DollarSign className="w-7 h-7" />,
+            icon: <span className="w-7 h-7 text-2xl">₹</span>,
             iconBg: "from-purple-500 to-pink-500",
             trend: "+22%",
             chart: [100, 110, 115, 120, 130, 140, 150]
@@ -453,8 +453,8 @@ export default function Shipments() {
                       </div>
                       <div className="flex items-center justify-between pt-3 border-t border-white/10">
                         <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold text-white text-lg">${shipment.totalAmount?.toLocaleString()}</span>
+                          <span className="text-lg text-emerald-400">₹</span>
+                          <span className="font-bold text-white text-lg">₹{shipment.totalAmount?.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-white/60">
                           <Package className="w-4 h-4 text-cyan-400" />

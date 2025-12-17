@@ -657,9 +657,9 @@ export default function Dashboard() {
 
   const statCards = [
     { label: "Total Drugs", value: stats.totalDrugs, icon: <Package size={24} />, color: "#5b7cff", trend: "+10%", trendUp: true },
-    { label: "Suppliers", value: stats.suppliers, icon: <Users size={24} />, color: "#1a4d5c", trend: "+5%", trendUp: true },
-    { label: "Active Shipments", value: stats.activeShipments, icon: <Truck size={24} />, color: "#7c3aed", trend: "+15%", trendUp: true },
-    { label: "Low Stock Items", value: stats.lowStockItems, icon: <AlertTriangle size={24} />, color: "#ef4444", trend: "-8%", trendUp: false },
+    { label: "Suppliers", value: stats.totalSuppliers || stats.suppliers, icon: <Users size={24} />, color: "#1a4d5c", trend: "+5%", trendUp: true },
+    { label: "Active Shipments", value: stats.totalShipments || stats.activeShipments, icon: <Truck size={24} />, color: "#7c3aed", trend: "+15%", trendUp: true },
+    { label: "Low Stock Items", value: stats.lowStockCount || stats.lowStockItems, icon: <AlertTriangle size={24} />, color: "#ef4444", trend: "-8%", trendUp: false },
   ];
 
   const getSalesData = () => {

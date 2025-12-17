@@ -175,4 +175,26 @@ router.get("/verify-reset-token/:token", async (req, res) => {
   }
 });
 
+// =======================
+// Logout
+// =======================
+router.post("/logout", (req, res) => {
+  try {
+    // In JWT-based auth, logout is handled client-side by removing the token
+    // This endpoint serves as a confirmation
+    const token = req.headers.authorization?.split(" ")[1];
+    if (token) {
+      console.log(`✅ User logged out successfully`);
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;

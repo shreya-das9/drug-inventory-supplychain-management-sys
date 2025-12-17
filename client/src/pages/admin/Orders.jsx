@@ -280,10 +280,10 @@ export default function Orders() {
           },
           { 
             label: "Total Value", 
-            value: `$${stats.totalValue?.toLocaleString() || 0}`, 
+            value: `₹${stats.totalValue?.toLocaleString() || 0}`, 
             gradient: "from-purple-500/20 via-fuchsia-500/20 to-pink-500/20",
             border: "border-purple-500/30",
-            icon: <DollarSign className="w-6 h-6" />,
+            icon: <span className="w-6 h-6 text-xl">₹</span>,
             iconBg: "from-purple-500 to-fuchsia-500",
             trend: "+25%",
             chart: [100, 110, 120, 130, 140, 150, 160]
@@ -476,8 +476,8 @@ export default function Orders() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4 text-emerald-400" />
-                            <span className="font-bold text-white text-sm">${order.totalAmount?.toLocaleString() || 0}</span>
+                            <span className="text-sm text-emerald-400">₹</span>
+                            <span className="font-bold text-white text-sm">₹{order.totalAmount?.toLocaleString() || 0}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">

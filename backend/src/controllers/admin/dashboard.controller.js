@@ -1,13 +1,19 @@
 //SHREYA'S CODE.
+
+
 import Drug from "../../models/Drug.js";
 import Inventory from "../../models/Inventory.js";
+import SupplierModel from "../../models/SupplierModel.js";
+import ShipmentModel from "../../models/ShipmentModel.js";
 
 export const getStats = async (req, res) => {
   try {
-    const [totalDrugs, lowStockCount, expiredCount] = await Promise.all([
+    const [totalDrugs, lowStockCount, expiredCount, totalSuppliers, totalShipments] = await Promise.all([
       Drug.countDocuments(),
       Inventory.countDocuments({ quantity: { $lt: 10 } }),
       Drug.countDocuments({ expiryDate: { $lt: new Date() } }),
+      SupplierModel.countDocuments(),
+      ShipmentModel.countDocuments(),
     ]);
 
     res.status(200).json({
@@ -16,6 +22,8 @@ export const getStats = async (req, res) => {
         totalDrugs,
         lowStockCount,
         expiredCount,
+        totalSuppliers,
+        totalShipments,
       },
     });
   } catch (error) {

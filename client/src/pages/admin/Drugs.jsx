@@ -36,6 +36,7 @@ export default function Drugs() {
 
   // Original app state / API-driven state (kept)
   const [drugs, setDrugs] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -51,6 +52,7 @@ export default function Drugs() {
   // fetchDrugs kept exactly as original logic (only UI uses changed)
   useEffect(() => {
     fetchDrugs();
+    fetchInventory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchTerm]);
 
@@ -93,6 +95,20 @@ export default function Drugs() {
       setError("Failed to load drugs");
       setDrugs([]);
       setTotalPages(1);
+    }
+  };
+
+  const fetchInventory = async () => {
+    try {
+      const response = await request("GET", "/api/admin/inventory");
+      if (response?.success && response?.inventory) {
+        setInventory(response.inventory);
+      } else if (response?.inventory) {
+        setInventory(response.inventory);
+      }
+    } catch (err) {
+      console.error("Error fetching inventory:", err);
+      setInventory([]);
     }
   };
 
@@ -147,40 +163,27 @@ export default function Drugs() {
     }
   };
 
-// Helper function to get quantity from drug object (defined once at the top)
+// Helper function to get quantity from inventory for a specific drug
 const getQuantity = (drug) => {
-  // Try multiple possible field names
-  const qty = drug.stock ?? drug.quantity ?? drug.qty ?? drug.count ?? drug.units ?? drug.stockQuantity ?? drug.availableQuantity;
-  
-  // If quantity exists and is valid, use it
-  if (qty !== undefined && qty !== null && qty !== '') {
-    return Number(qty) || 0;
+  // First check if drug object has quantity field
+  const directQty = drug.stock ?? drug.quantity ?? drug.qty ?? drug.count ?? drug.units ?? drug.stockQuantity ?? drug.availableQuantity;
+  if (directQty !== undefined && directQty !== null && directQty !== '') {
+    return Number(directQty) || 0;
   }
   
-  // Generate CONSISTENT quantity based on drug ID (won't change between renders)
-  if (drug._id || drug.id || drug.name) {
-    // Create a simple hash from the ID/name to get consistent "random" number
-    const identifier = drug._id || drug.id || drug.name;
-    let hash = 0;
-    for (let i = 0; i < identifier.length; i++) {
-      hash = ((hash << 5) - hash) + identifier.charCodeAt(i);
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    
-    // Use hash to determine stock level consistently
-    const normalizedHash = Math.abs(hash) % 100;
-    
-    // Distribution: 65% in stock, 20% low stock, 15% out of stock
-    if (normalizedHash < 65) {
-      return 50 + (normalizedHash % 51); // 50-100 (In Stock - Green)
-    } else if (normalizedHash < 85) {
-      return 10 + ((normalizedHash - 65) % 20); // 10-29 (Low Stock - Yellow)
-    } else {
-      return 0; // 0 (Out of Stock - Red)
+  // Then fetch from inventory array - sum all inventory quantities for this drug
+  const drugId = drug._id || drug.id;
+  if (drugId && inventory && inventory.length > 0) {
+    const inventoryItems = inventory.filter(inv => 
+      inv.drug === drugId || inv.drug?._id === drugId || inv.drug?.name === drug.name
+    );
+    if (inventoryItems.length > 0) {
+      const totalQty = inventoryItems.reduce((sum, inv) => sum + (Number(inv.quantity) || 0), 0);
+      return totalQty;
     }
   }
   
-  // Fallback if no identifier exists
+  // Fallback to 0 if no inventory found
   return 0;
 };
 
