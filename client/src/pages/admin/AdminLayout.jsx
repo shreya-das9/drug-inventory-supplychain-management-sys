@@ -486,6 +486,7 @@ import {
   Users,
   Truck,
   FileText,
+  LogOut,
 } from "lucide-react";
 import logo from "../../assets/logo.png";
 
@@ -624,7 +625,7 @@ export default function AdminLayout() {
       {/* Main Section */}
       <div className="flex-1 flex flex-col relative z-10">
         {/* Header */}
-        <header className="backdrop-blur-2xl bg-gradient-to-r from-[#0d1b2a]/90 to-[#1a2642]/90 border-b border-white/10 px-8 py-4 flex justify-between items-center shadow-[0_0_30px_rgba(0,0,0,0.6)]">
+        <header className="relative z-40 backdrop-blur-2xl bg-gradient-to-r from-[#0d1b2a]/90 to-[#1a2642]/90 border-b border-white/10 px-8 py-4 flex justify-between items-center shadow-[0_0_30px_rgba(0,0,0,0.6)]">
           <div className="flex items-center gap-4 w-full">
             <motion.h2
               key={getActivePage()}
@@ -662,15 +663,48 @@ export default function AdminLayout() {
               <Bell className="w-5 h-5 text-white/80" />
             </motion.button>
 
-            {/* A Icon */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowProfile(!showProfile)}
-              className="w-10 h-10 rounded-full bg-gradient-to-r from-[#5b7cff] to-[#7c3aed] flex items-center justify-center text-white font-bold text-lg shadow-[0_0_10px_rgba(91,124,255,0.5)]"
-            >
-              A
-            </motion.button>
+            {/* A Icon - Profile Button */}
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowProfile(!showProfile)}
+                className="w-10 h-10 rounded-full bg-gradient-to-r from-[#5b7cff] to-[#7c3aed] flex items-center justify-center text-white font-bold text-lg shadow-[0_0_10px_rgba(91,124,255,0.5)]"
+              >
+                A
+              </motion.button>
+
+              {/* Profile Dropdown */}
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    className="absolute right-0 top-full mt-2 bg-gradient-to-br from-[#1a2642]/95 to-[#0d1b2a]/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-[0_0_40px_rgba(91,124,255,0.3)] z-50 min-w-[220px]"
+                  >
+                    <div className="p-4 space-y-3">
+                      <div className="px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                        <p className="text-xs text-white/50">Logged in as</p>
+                        <p className="text-sm text-white font-semibold">Admin User</p>
+                      </div>
+
+                      <motion.button
+                        whileHover={{ backgroundColor: "rgba(91, 124, 255, 0.2)" }}
+                        onClick={() => {
+                          setShowProfile(false);
+                          navigate("/logout");
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white transition-colors group"
+                      >
+                        <LogOut className="w-4 h-4 text-red-400 group-hover:text-red-300" />
+                        <span className="text-sm font-medium">Logout</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
@@ -788,4 +822,4 @@ export default function AdminLayout() {
       </AnimatePresence>
     </div>
   );
- }
+}
