@@ -699,9 +699,9 @@ import {
 
 export default function Alerts() {
   const { request } = useApi();
-  const [alerts, setAlerts] = useState({ expiryAlerts: [], lowStockAlerts: [] });
+  const [alerts, setAlerts] = useState({ expiryAlerts: [], lowStockAlerts: [], securityTransitAlerts: [] });
   const [filter, setFilter] = useState("all");
-  const [openSections, setOpenSections] = useState({ expiry: true, lowStock: true });
+  const [openSections, setOpenSections] = useState({ expiry: true, lowStock: true, security: true });
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -716,7 +716,7 @@ export default function Alerts() {
     if (showRefresh) setIsRefreshing(true);
     try {
       const res = await request("GET", "/api/admin/dashboard/alerts");
-      const alertData = res.data || { expiryAlerts: [], lowStockAlerts: [] };
+      const alertData = res.data || { expiryAlerts: [], lowStockAlerts: [], securityTransitAlerts: [] };
       console.log("Fetched alerts:", alertData); // Debug log
       setAlerts(alertData);
       setLastUpdate(new Date());
@@ -792,7 +792,8 @@ export default function Alerts() {
 
   const expiryCount = alerts.expiryAlerts?.length || 0;
   const lowStockCount = alerts.lowStockAlerts?.length || 0;
-  const totalAlerts = expiryCount + lowStockCount;
+  const securityCount = alerts.securityTransitAlerts?.length || 0;
+  const totalAlerts = expiryCount + lowStockCount + securityCount;
   const criticalCount = alerts.expiryAlerts?.filter(a => {
     const days = daysRemaining(a.expiryDate);
     return days !== null && days > 0 && days < 7;
@@ -842,11 +843,30 @@ export default function Alerts() {
       console.log("Searching lowStock:", searchLower, "in", searchableText); // Debug
       return searchableText.includes(searchLower);
     });
+
+  const filteredSecurity = (alerts.securityTransitAlerts || []).filter((a) => {
+    if (!search || search.trim() === "") return true;
+
+    const searchableText = [
+      a.bleId,
+      a.stage,
+      a.route,
+      a.trafficCondition,
+      a.delayReason,
+      a.location?.city
+    ]
+      .filter(Boolean)
+      .map((field) => String(field).toLowerCase())
+      .join(" ");
+
+    return searchableText.includes(search.toLowerCase().trim());
+  });
     
   console.log("Filter results - Expiry:", filteredExpiry.length, "LowStock:", filteredLowStock.length); // Debug
 
   const showExpiry = filter === "all" || filter === "expiry";
   const showLow = filter === "all" || filter === "lowStock";
+  const showSecurity = filter === "all" || filter === "security";
 
   const daysRemaining = (expiryDate) => {
     try {
@@ -1518,7 +1538,7 @@ export default function Alerts() {
           {search && (
             <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-2">
               <span className="text-xs text-cyan-400 font-medium">
-                {filteredExpiry.length + filteredLowStock.length} results
+                {filteredExpiry.length + filteredLowStock.length + filteredSecurity.length} results
               </span>
               <motion.button
                 initial={{ scale: 0 }}
@@ -1535,6 +1555,7 @@ export default function Alerts() {
         <div className="flex gap-2">
           {[
             { key: "all", label: "All", icon: <Package size={16} /> },
+            { key: "security", label: "Security", icon: <Bell size={16} /> },
             { key: "expiry", label: "Expiry", icon: <Clock size={16} /> },
             { key: "lowStock", label: "Low Stock", icon: <AlertTriangle size={16} /> },
           ].map((btn) => (
@@ -1972,6 +1993,84 @@ export default function Alerts() {
                           </motion.div>
                         );
                       })
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+
+          {showSecurity && (
+            <motion.div
+              key="securitySection"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-2xl border border-red-700/30 glass-morph overflow-hidden relative"
+            >
+              <motion.div
+                onClick={() => toggleSection("security")}
+                className="flex justify-between items-center cursor-pointer bg-gradient-to-r from-red-900/30 via-orange-900/30 to-amber-900/30 px-6 py-5 relative overflow-hidden group"
+                whileHover={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+              >
+                <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                    <Bell className="text-red-300" size={24} />
+                  </motion.div>
+                  <div>
+                    <h3 className="text-xl font-bold text-red-100">Security Transit Alerts</h3>
+                    <p className="text-sm text-red-300/70 mt-0.5">{filteredSecurity.length} delayed handoff events</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-sm font-medium">
+                    {filteredSecurity.length}
+                  </div>
+                  <motion.div animate={{ rotate: openSections.security ? 180 : 0 }} transition={{ duration: 0.3 }}>
+                    <ChevronDown className="text-red-300" />
+                  </motion.div>
+                </div>
+              </motion.div>
+
+              <AnimatePresence>
+                {openSections.security && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4"
+                  >
+                    {filteredSecurity.length === 0 ? (
+                      <div className="col-span-full text-center py-12">
+                        <Bell size={48} className="text-gray-500 mx-auto mb-4" />
+                        <p className="text-gray-400 text-lg">No transit delay security alerts</p>
+                      </div>
+                    ) : (
+                      filteredSecurity.map((item, idx) => (
+                        <motion.div
+                          key={item.id || idx}
+                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          className="p-5 rounded-xl bg-gradient-to-br from-red-900/20 to-orange-900/20 border border-red-700/30 shadow-xl"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-red-200 font-semibold">{item.bleId || "Unknown BLE"}</div>
+                            <div className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-300">Security</div>
+                          </div>
+                          <div className="space-y-2 text-sm text-red-100/90">
+                            <div><strong>Route:</strong> {item.route || "N/A"}</div>
+                            <div><strong>Current Stage:</strong> {item.stage || "N/A"}</div>
+                            <div><strong>Transit Time:</strong> {item.elapsedMinutes ?? "N/A"} min / {item.allowedMinutes ?? "N/A"} min allowed</div>
+                            <div><strong>Traffic:</strong> {item.trafficCondition || "moderate"}</div>
+                            <div><strong>Location:</strong> {item.location?.city || "N/A"}</div>
+                            <div><strong>Delay Reason:</strong> {item.delayReason || "Not submitted"}</div>
+                            <div><strong>Scanned:</strong> {item.scannedAt ? new Date(item.scannedAt).toLocaleString() : "N/A"}</div>
+                          </div>
+                        </motion.div>
+                      ))
                     )}
                   </motion.div>
                 )}

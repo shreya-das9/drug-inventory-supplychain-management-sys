@@ -8,22 +8,46 @@ import { getEmailTransporter } from "../services/email.service.js";
 
 const router = express.Router();
 
+const parseAllowedAdminEmails = () => {
+  const raw = process.env.ADMIN_ALLOWED_EMAILS || "";
+  return raw
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+};
+
+const isAdminAllowedEmail = (email) => {
+  const allowedEmails = parseAllowedAdminEmails();
+  if (!allowedEmails.length) {
+    return false;
+  }
+  return allowedEmails.includes(String(email || "").toLowerCase());
+};
+
 // =======================
 // Signup
 // =======================
 // SIGNUP
 router.post("/signup", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
+    const normalizedRole = String(req.body.role || "USER").toUpperCase();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (normalizedRole === "ADMIN" && !isAdminAllowedEmail(normalizedEmail)) {
+      return res.status(403).json({
+        message: "This email is not authorized to create an admin account"
+      });
+    }
 
     // check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
     // create new user
-    const user = new User({ name, email, password, role });
+    const user = new User({ name, email: normalizedEmail, password, role: normalizedRole });
     await user.save();
 
     // 🔑 generate JWT token
@@ -56,10 +80,17 @@ router.post("/signup", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    if (user.role === "ADMIN" && !isAdminAllowedEmail(normalizedEmail)) {
+      return res.status(403).json({
+        message: "This admin email is not authorized"
+      });
     }
 
     const isMatch = await user.matchPassword(password);

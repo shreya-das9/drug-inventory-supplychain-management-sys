@@ -1,37 +1,33 @@
+// backend/src/routes/admin/suppliers.routes.js
 import express from 'express';
+import {
+  getSuppliers,
+  getSupplier,
+  createSupplier,
+  updateSupplier,
+  updateSupplierStatus,
+  deleteSupplier,
+  getSupplierStats,
+  exportSuppliers
+} from '../../controllers/suppliers.controller.js';
+
 const router = express.Router();
 
-// Import middleware (FIXED PATHS)
-import { verifyToken, isAdmin } from '../../middleware/auth.middleware.js';
+// IMPORTANT: These routes must come BEFORE /:id routes
+router.get('/stats', getSupplierStats);
+router.get('/export', exportSuppliers);
 
-// Import controller
-import supplierController from '../../controllers/suppliers.controller.js';
+// Main CRUD routes
+router.route('/')
+  .get(getSuppliers)
+  .post(createSupplier);
 
-// Apply authentication and admin role to all routes
-router.use(verifyToken);
-router.use(isAdmin);
+router.route('/:id')
+  .get(getSupplier)
+  .put(updateSupplier)
+  .delete(deleteSupplier);
 
-// GET /api/admin/suppliers/stats - Get supplier statistics
-router.get('/stats', supplierController.getSupplierStats);
-
-// GET /api/admin/suppliers - Get all suppliers
-router.get('/', supplierController.getAllSuppliers);
-
-
-// GET /api/admin/suppliers/:id - Get single supplier
-router.get('/:id', supplierController.getSupplierById);
-
-// POST /api/admin/suppliers - Add new supplier
-router.post('/', supplierController.addSupplier);
-
-// PATCH /api/admin/suppliers/:id/approve - Approve/reject supplier
-router.patch('/:id/approve', supplierController.approveSupplier);
-
-// PUT /api/admin/suppliers/:id - Update supplier (← NEW ROUTE)
-router.put('/:id', supplierController.updateSupplier);
-
-
-// DELETE /api/admin/suppliers/:id - Delete supplier
-router.delete('/:id', supplierController.deleteSupplier);
+// Status update route
+router.patch('/:id/status', updateSupplierStatus);
 
 export default router;

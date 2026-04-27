@@ -2,15 +2,23 @@ import express from 'express';
 const router = express.Router();
 
 // Import middleware (FIXED: removed requireRole import, using correct function names)
-import { verifyToken, isAdmin } from "../middleware/auth.middleware.js";
+import { verifyToken, isAdmin, isWarehouseAdmin } from "../middleware/auth.middleware.js";
 
 // Import controllers
 import supplierController from '../controllers/suppliers.controller.js';
 import shipmentController from '../controllers/shipments.controller.js';
 import orderController from '../controllers/orders.controller.js';
+import dashboardRoutes from './admin/dashboard.routes.js';
 
-// Apply authentication and admin role check to all routes (FIXED: using correct function names)
+// Apply authentication to all routes
 router.use(verifyToken);
+
+// ==================== DASHBOARD ROUTES ====================
+// Dashboard routes available for both admins and warehouse admins
+// (mounted before isAdmin middleware so warehouse admins can access)
+router.use('/dashboard', dashboardRoutes);
+
+// Apply admin role check to remaining routes
 router.use(isAdmin);
 
 // ==================== SUPPLIER ROUTES ====================

@@ -2,6 +2,7 @@ import OrderModel from '../models/OrderModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import DrugModel from '../models/Drug.js';
 import { successResponse, errorResponse } from '../utils/response.js';
+import { validateArray, validateRequired } from '../utils/validation.js';
 
 // Get all orders with filtering and pagination
 const getAllOrders = async (req, res) => {
@@ -20,9 +21,16 @@ const getAllOrders = async (req, res) => {
     }
     
     if (search) {
+      const matchingSuppliers = await SupplierModel.find(
+        { name: { $regex: search, $options: 'i' } },
+        '_id'
+      );
+      const supplierIds = matchingSuppliers.map((supplierDoc) => supplierDoc._id);
+
       query.$or = [
         { orderNumber: { $regex: search, $options: 'i' } },
-        { purchaseOrderNumber: { $regex: search, $options: 'i' } }
+        { purchaseOrderNumber: { $regex: search, $options: 'i' } },
+        { supplier: { $in: supplierIds } }
       ];
     }
     
@@ -39,10 +47,18 @@ const getAllOrders = async (req, res) => {
       .skip(skip)
       .select('-__v');
     
+    // Validate orders data before returning
+    const validatedOrders = validateArray(
+      orders,
+      ['_id', 'status'],
+      {},
+      'Orders'
+    );
+    
     const total = await OrderModel.countDocuments(query);
     
     return successResponse(res, 200, 'Orders fetched successfully', {
-      orders,
+      orders: validatedOrders,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),

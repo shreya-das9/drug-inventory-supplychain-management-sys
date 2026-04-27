@@ -1,16 +1,15 @@
-import SupplierModel from '../models/SupplierModel.js';
-import { successResponse, errorResponse } from '../utils/response.js';
+// backend/src/controllers/suppliers.controller.js
+import Supplier from '../models/SupplierModel.js';
+import { validateArray, validateRequired } from '../utils/validation.js';
 
-// Get all suppliers with filtering and pagination
-const getAllSuppliers = async (req, res) => {
+// Get all suppliers with filters
+export const getSuppliers = async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10, sortBy = '-createdAt' } = req.query;
+    const { status, search } = req.query;
+    let query = {};
     
-    // Build query
-    const query = {};
-    
-    if (status) {
-      query.status = status;
+    if (status && status !== 'all') {
+      query.status = status.toUpperCase();
     }
     
     if (search) {
@@ -21,202 +20,162 @@ const getAllSuppliers = async (req, res) => {
       ];
     }
     
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const suppliers = await Supplier.find(query)
+      .populate('approvedBy', 'name email')
+      .sort({ createdAt: -1 });
     
-    // Execute query
-    const suppliers = await SupplierModel.find(query)
-      .sort(sortBy)
-      .limit(parseInt(limit))
-      .skip(skip)
-      .select('-__v');
-    
-    const total = await SupplierModel.countDocuments(query);
-    
-    return successResponse(res, 200, 'Suppliers fetched successfully', {
+    // Validate suppliers data before returning
+    const validatedSuppliers = validateArray(
       suppliers,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: parseInt(limit)
-      }
-    });
-  } catch (error) {
-    console.error('Get suppliers error:', error);
-    return errorResponse(res, 500, 'Failed to fetch suppliers', error.message);
-  }
-};
-
-// Get single supplier by ID
-const getSupplierById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const supplier = await SupplierModel.findById(id);
-    
-    if (!supplier) {
-      return errorResponse(res, 404, 'Supplier not found');
-    }
-    
-    return successResponse(res, 200, 'Supplier fetched successfully', supplier);
-  } catch (error) {
-    console.error('Get supplier error:', error);
-    return errorResponse(res, 500, 'Failed to fetch supplier', error.message);
-  }
-};
-
-// Add new supplier
-const addSupplier = async (req, res) => {
-  try {
-    const supplierData = {
-      ...req.body,
-      createdBy: req.user._id // From auth middleware
-    };
-    
-    const supplier = await SupplierModel.create(supplierData);
-    
-    return successResponse(res, 201, 'Supplier added successfully', supplier);
-  } catch (error) {
-    console.error('Add supplier error:', error);
-    
-    // Handle duplicate key errors
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
-      return errorResponse(res, 400, `Supplier with this ${field} already exists`);
-    }
-    
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return errorResponse(res, 400, 'Validation failed', messages);
-    }
-    
-    return errorResponse(res, 500, 'Failed to add supplier', error.message);
-  }
-};
-
-// Update supplier - ADD THIS ENTIRE FUNCTION HERE
-const updateSupplier = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-    
-    delete updateData.createdBy;
-    delete updateData.approvedBy;
-    delete updateData.approvedAt;
-    
-    const supplier = await SupplierModel.findByIdAndUpdate(
-      id,
-      updateData,
-      { 
-        new: true,
-        runValidators: true
-      }
+      ['_id', 'name', 'status'],
+      {},
+      'Suppliers'
     );
     
-    if (!supplier) {
-      return errorResponse(res, 404, 'Supplier not found');
-    }
-    
-    return successResponse(res, 200, 'Supplier updated successfully', supplier);
+    res.json(validatedSuppliers);
   } catch (error) {
-    console.error('Update supplier error:', error);
-    
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
-      return errorResponse(res, 400, `Supplier with this ${field} already exists`);
-    }
-    
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return errorResponse(res, 400, 'Validation failed', messages);
-    }
-    
-    return errorResponse(res, 500, 'Failed to update supplier', error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Approve or reject supplier
-const approveSupplier = async (req, res) => {
+// Get single supplier
+export const getSupplier = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status, rejectionReason } = req.body;
-    
-    // Validate status (case-insensitive)
-    if (!['approved', 'rejected'].includes(status.toLowerCase())) {
-      return errorResponse(res, 400, 'Status must be either "approved" or "rejected"');
-    }
-    
-    // Require rejection reason when rejecting
-    if (status.toLowerCase() === 'rejected' && !rejectionReason) {
-      return errorResponse(res, 400, 'Rejection reason is required when rejecting a supplier');
-    }
-    
-    const supplier = await SupplierModel.findById(id);
+    const supplier = await Supplier.findById(req.params.id)
+      .populate('approvedBy', 'name email');
     
     if (!supplier) {
-      return errorResponse(res, 404, 'Supplier not found');
+      return res.status(404).json({ message: 'Supplier not found' });
     }
     
-    // Check if already processed (case-insensitive)
-    if (supplier.status.toLowerCase() !== 'pending') {
-      return errorResponse(res, 400, `Supplier is already ${supplier.status.toLowerCase()}`);
+    res.json(supplier);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Create supplier
+export const createSupplier = async (req, res) => {
+  try {
+    const { name, contactPerson, email, phone, address, status } = req.body;
+    
+    const existingSupplier = await Supplier.findOne({ name });
+    if (existingSupplier) {
+      return res.status(400).json({ message: 'Supplier with this name already exists' });
     }
     
-    // Update supplier status (convert to uppercase to match your database)
-    supplier.status = status.toUpperCase();
-    supplier.approvedBy = req.user._id;
-    supplier.approvedAt = new Date();
+    const supplier = await Supplier.create({
+      name,
+      contactPerson,
+      email,
+      phone,
+      address,
+      status: status || 'PENDING'
+    });
     
-    if (status.toLowerCase() === 'rejected') {
+    res.status(201).json(supplier);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update supplier
+export const updateSupplier = async (req, res) => {
+  try {
+    const { name, contactPerson, email, phone, address } = req.body;
+    
+    const supplier = await Supplier.findById(req.params.id);
+    if (!supplier) {
+      return res.status(404).json({ message: 'Supplier not found' });
+    }
+    
+    if (name && name !== supplier.name) {
+      const existingSupplier = await Supplier.findOne({ name });
+      if (existingSupplier) {
+        return res.status(400).json({ message: 'Supplier with this name already exists' });
+      }
+    }
+    
+    if (name) supplier.name = name;
+    if (contactPerson !== undefined) supplier.contactPerson = contactPerson;
+    if (email !== undefined) supplier.email = email;
+    if (phone !== undefined) supplier.phone = phone;
+    if (address !== undefined) supplier.address = address;
+    
+    await supplier.save();
+    res.json(supplier);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update supplier status
+export const updateSupplierStatus = async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    
+    const validStatuses = ['APPROVED', 'PENDING', 'REJECTED', 'SUSPENDED'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    
+    const supplier = await Supplier.findById(req.params.id);
+    if (!supplier) {
+      return res.status(404).json({ message: 'Supplier not found' });
+    }
+    
+    supplier.status = status;
+    
+    if (status === 'APPROVED') {
+      supplier.approvedBy = req.user?._id || null;
+      supplier.approvedAt = new Date();
+      supplier.rejectionReason = null;
+    }
+    
+    if (status === 'REJECTED') {
+      if (!rejectionReason || rejectionReason.trim() === '') {
+        return res.status(400).json({ message: 'Rejection reason is required' });
+      }
       supplier.rejectionReason = rejectionReason;
+      supplier.approvedBy = null;
+      supplier.approvedAt = null;
+    }
+    
+    if (status === 'PENDING') {
+      supplier.approvedBy = null;
+      supplier.approvedAt = null;
+      supplier.rejectionReason = null;
     }
     
     await supplier.save();
+    await supplier.populate('approvedBy', 'name email');
     
-    return successResponse(res, 200, `Supplier ${status.toLowerCase()} successfully`, supplier);
+    res.json(supplier);
   } catch (error) {
-    console.error('Approve supplier error:', error);
-    return errorResponse(res, 500, 'Failed to update supplier status', error.message);
+    res.status(500).json({ message: error.message });
   }
 };
-    
 
 // Delete supplier
-const deleteSupplier = async (req, res) => {
+export const deleteSupplier = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const supplier = await SupplierModel.findById(id);
+    const supplier = await Supplier.findById(req.params.id);
     
     if (!supplier) {
-      return errorResponse(res, 404, 'Supplier not found');
+      return res.status(404).json({ message: 'Supplier not found' });
     }
     
-    // Check if supplier has active orders/shipments
-    // You can add this check when shipment model is ready
-    // const activeShipments = await ShipmentModel.countDocuments({ 
-    //   supplier: id, 
-    //   status: { $in: ['pending', 'processing', 'shipped'] } 
-    // });
-    // if (activeShipments > 0) {
-    //   return errorResponse(res, 400, 'Cannot delete supplier with active shipments');
-    // }
-    
     await supplier.deleteOne();
-    
-    return successResponse(res, 200, 'Supplier deleted successfully');
+    res.json({ message: 'Supplier deleted successfully' });
   } catch (error) {
-    console.error('Delete supplier error:', error);
-    return errorResponse(res, 500, 'Failed to delete supplier', error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get supplier statistics
-const getSupplierStats = async (req, res) => {
+// Get statistics
+export const getSupplierStats = async (req, res) => {
   try {
-    const stats = await SupplierModel.aggregate([
+    const stats = await Supplier.aggregate([
       {
         $group: {
           _id: '$status',
@@ -225,31 +184,119 @@ const getSupplierStats = async (req, res) => {
       }
     ]);
     
+    const total = await Supplier.countDocuments();
+    
     const formattedStats = {
-      total: await SupplierModel.countDocuments(),
-      pending: 0,
+      total,
       approved: 0,
+      pending: 0,
       rejected: 0,
       suspended: 0
     };
     
     stats.forEach(stat => {
-      formattedStats[stat._id] = stat.count;
+      const status = stat._id.toLowerCase();
+      formattedStats[status] = stat.count;
     });
     
-    return successResponse(res, 200, 'Supplier statistics fetched', formattedStats);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const lastWeekTotal = await Supplier.countDocuments({
+      createdAt: { $lte: oneWeekAgo }
+    });
+    
+    const lastWeekStats = await Supplier.aggregate([
+      { $match: { createdAt: { $lte: oneWeekAgo } } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    
+    const previousWeek = {
+      total: lastWeekTotal,
+      approved: 0,
+      pending: 0,
+      rejected: 0,
+      suspended: 0
+    };
+    
+    lastWeekStats.forEach(stat => {
+      const status = stat._id.toLowerCase();
+      previousWeek[status] = stat.count;
+    });
+    
+    const calculateChange = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+    
+    const changes = {
+      approved: calculateChange(formattedStats.approved, previousWeek.approved),
+      pending: calculateChange(formattedStats.pending, previousWeek.pending),
+      rejected: calculateChange(formattedStats.rejected, previousWeek.rejected),
+      suspended: calculateChange(formattedStats.suspended, previousWeek.suspended),
+      total: calculateChange(formattedStats.total, previousWeek.total)
+    };
+    
+    res.json({
+      current: formattedStats,
+      previousWeek,
+      changes
+    });
   } catch (error) {
-    console.error('Get supplier stats error:', error);
-    return errorResponse(res, 500, 'Failed to fetch statistics', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Export to CSV
+export const exportSuppliers = async (req, res) => {
+  try {
+    const suppliers = await Supplier.find()
+      .populate('approvedBy', 'name email')
+      .sort({ createdAt: -1 });
+    
+    const headers = [
+      'Name', 'Contact Person', 'Email', 'Phone', 'Address',
+      'Status', 'Rejection Reason', 'Approved By', 'Approved At',
+      'Created At', 'Updated At'
+    ];
+    
+    const rows = suppliers.map(s => [
+      s.name,
+      s.contactPerson || '',
+      s.email || '',
+      s.phone || '',
+      s.address || '',
+      s.status,
+      s.rejectionReason || '',
+      s.approvedBy ? s.approvedBy.name : '',
+      s.approvedAt ? new Date(s.approvedAt).toLocaleDateString() : '',
+      new Date(s.createdAt).toLocaleDateString(),
+      new Date(s.updatedAt).toLocaleDateString()
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=suppliers_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
 export default {
-  getAllSuppliers,
-  getSupplierById,
-  addSupplier,
+  getSuppliers,
+  getSupplier,
+  createSupplier,
   updateSupplier,
-  approveSupplier,
+  updateSupplierStatus,
   deleteSupplier,
-  getSupplierStats
+  getSupplierStats,
+  exportSuppliers,
+  getAllSuppliers: getSuppliers,
+  getSupplierById: getSupplier,
+  addSupplier: createSupplier,
+  approveSupplier: updateSupplierStatus
 };

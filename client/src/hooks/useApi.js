@@ -2,14 +2,19 @@
 import axios from "axios";
 import { useState } from "react";
 
+const API_BASE_CANDIDATES = [
+	import.meta.env.VITE_API_BASE_URL,
+	"http://localhost:5000",
+	"http://localhost:5001",
+	"http://localhost:5002"
+].filter(Boolean);
+
 export const useApi = () => {
   const [loading, setLoading] = useState(false);
 
   const request = async (method, url, data = null) => {
     try {
       setLoading(true);
-
-      const baseURL = "http://localhost:5000";
       
       // ❌ STEP 1: Get token using the key "token"
       const token = localStorage.getItem("token"); 
@@ -23,14 +28,35 @@ export const useApi = () => {
         headers["Authorization"] = `Bearer ${token}`; 
       }
 
-      const res = await axios({
-        method,
-        url: `${baseURL}${url}`,
-        data,
-        headers, // Attach the headers
-      });
+			let lastError = null;
 
-      return res.data;
+			for (const baseURL of API_BASE_CANDIDATES) {
+				try {
+					const res = await axios({
+						method,
+						url: `${baseURL}${url}`,
+						data,
+						headers,
+					});
+
+					return res.data;
+				} catch (error) {
+					lastError = error;
+
+					const status = error?.response?.status;
+					const message = String(error?.response?.data?.message || "").toLowerCase();
+
+					const shouldRetryWithNextBase =
+						!status ||
+						(status === 404 && message.includes("route"));
+
+					if (!shouldRetryWithNextBase) {
+						throw error;
+					}
+				}
+			}
+
+			throw lastError || new Error("API request failed");
     } catch (error) {
       console.error("API request error:", error);
       

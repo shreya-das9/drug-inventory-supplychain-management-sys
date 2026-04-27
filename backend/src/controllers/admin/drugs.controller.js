@@ -1,5 +1,6 @@
 //SHREYA'S CODE.
 import Drug from "../../models/Drug.js";
+import { validateArray, validateRequired } from "../../utils/validation.js";
 
 export const getAllDrugs = async (req, res) => {
   try {
@@ -12,11 +13,19 @@ export const getAllDrugs = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
+    // Validate drugs data before returning
+    const validatedDrugs = validateArray(
+      drugs,
+      ['_id', 'name', 'batchNumber'],
+      {},
+      'Drugs'
+    );
+
     res.json({
       success: true,
       total,
       currentPage: page,
-      drugs,
+      drugs: validatedDrugs,
     });
   } catch (error) {
     console.error("❌ Error fetching drugs:", error);
@@ -39,15 +48,24 @@ export const addDrug = async (req, res) => {
   try {
     const { name, category, manufacturer, batchNumber, price, expiryDate, description } = req.body;
 
-    if (!name || !batchNumber)
-      return res.status(400).json({ success: false, message: "Name and batch number required" });
+    // Validate required fields
+    validateRequired(
+      { name, batchNumber },
+      ['name', 'batchNumber'],
+      'Drug Input'
+    );
+
+    // Ensure name is not empty string
+    if (!name.trim() || !batchNumber.trim()) {
+      return res.status(400).json({ success: false, message: "Name and batch number cannot be empty" });
+    }
 
     const newDrug = await Drug.create({
-      name,
+      name: name.trim(),
       category,
       manufacturer,
-      batchNumber,
-      price,
+      batchNumber: batchNumber.trim(),
+      price: Number(price) || 0,
       expiryDate,
       description,
     });

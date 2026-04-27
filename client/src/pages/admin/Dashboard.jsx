@@ -599,7 +599,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApi } from "../../hooks/useApi";
 import { 
   Package, Users, Truck, AlertTriangle, TrendingUp, TrendingDown, ExternalLink,
-  DollarSign, Activity, Bell, Download, Calendar, Filter, Search
+  IndianRupee, Activity, Bell, Download, Calendar, Filter, Search, Bluetooth, Loader2
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -614,6 +614,9 @@ export default function Dashboard() {
 
   const [chartPeriod, setChartPeriod] = useState("year");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [mockBleData, setMockBleData] = useState(null);
+  const [mockBleLoading, setMockBleLoading] = useState(false);
+  const [mockBleError, setMockBleError] = useState("");
 
   const categoryData = [
     { name: "Antibiotics", value: 35, color: "#5b7cff" },
@@ -623,10 +626,10 @@ export default function Dashboard() {
   ];
 
   const recentOrders = [
-    { id: "#ORD121", medicine: "Metformin", price: "$10.50", status: "Delivered", quantity: 500 },
-    { id: "#ORD122", medicine: "Omeprazole", price: "$15.05", status: "Delivered", quantity: 300 },
-    { id: "#ORD123", medicine: "Lisinopril", price: "$8.75", status: "Pending", quantity: 200 },
-    { id: "#ORD124", medicine: "Atorvastatin", price: "$12.30", status: "In Transit", quantity: 450 },
+    { id: "#ORD121", medicine: "Metformin", price: "₹10.50", status: "Delivered", quantity: 500 },
+    { id: "#ORD122", medicine: "Omeprazole", price: "₹15.05", status: "Delivered", quantity: 300 },
+    { id: "#ORD123", medicine: "Lisinopril", price: "₹8.75", status: "Pending", quantity: 200 },
+    { id: "#ORD124", medicine: "Atorvastatin", price: "₹12.30", status: "In Transit", quantity: 450 },
   ];
 
   const notifications = [
@@ -647,13 +650,13 @@ export default function Dashboard() {
         const [statsRes] = await Promise.all([
           request("GET", "/api/admin/dashboard/stats")
         ]);
-        if (statsRes?.data) setStats(statsRes.data);
+        if (statsRes) setStats(statsRes);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       }
     };
     fetchData();
-  }, [request]);
+  }, []);
 
   const statCards = [
     { label: "Total Drugs", value: stats.totalDrugs, icon: <Package size={24} />, color: "#5b7cff", trend: "+10%", trendUp: true },
@@ -677,6 +680,27 @@ export default function Dashboard() {
 
   const salesData = getSalesData();
   const maxValue = Math.max(...salesData.map(d => d.value));
+
+  const runMockBleCheck = async () => {
+    try {
+      setMockBleLoading(true);
+      setMockBleError("");
+
+      const response = await request("GET", "/api/ble/mock-check");
+      const trackingData = response?.data?.tracking || response?.tracking || null;
+
+      if (!trackingData) {
+        throw new Error("Invalid mock BLE response");
+      }
+
+      setMockBleData(trackingData);
+    } catch (error) {
+      setMockBleError(error?.response?.data?.message || error?.message || "Mock BLE check failed");
+      setMockBleData(null);
+    } finally {
+      setMockBleLoading(false);
+    }
+  };
 
   return (
     <div className="w-full text-white p-5">
@@ -737,6 +761,59 @@ export default function Dashboard() {
 </div>
 
 
+      {/* Mock BLE Tracking Check */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl p-5 shadow-xl backdrop-blur-lg border border-white/10 mb-6"
+        style={{ background: "rgba(30,41,59,0.6)" }}
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <div className="flex items-center gap-2">
+            <Bluetooth size={18} className="text-cyan-400" />
+            <h2 className="text-lg font-bold text-white">Mock BLE Tracking Check</h2>
+          </div>
+          <button
+            onClick={runMockBleCheck}
+            disabled={mockBleLoading}
+            className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed transition text-sm font-semibold flex items-center gap-2"
+          >
+            {mockBleLoading ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
+            Run Check
+          </button>
+        </div>
+
+        {mockBleError && (
+          <p className="text-red-400 text-sm">{mockBleError}</p>
+        )}
+
+        {mockBleData && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-gray-400">Device ID</p>
+              <p className="text-sm font-semibold text-white">{mockBleData.deviceId}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-gray-400">Batch ID</p>
+              <p className="text-sm font-semibold text-white">{mockBleData.batchId}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-gray-400">Temperature</p>
+              <p className="text-sm font-semibold text-white">{mockBleData.temperature}°C</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-gray-400">Status</p>
+              <p className="text-sm font-semibold text-emerald-400">{mockBleData.status}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-gray-400">Timestamp</p>
+              <p className="text-xs font-semibold text-white">{new Date(mockBleData.timestamp).toLocaleString()}</p>
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+
       {/* Top Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {statCards.map((card, idx) => (
@@ -780,17 +857,17 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Monthly Revenue</h2>
             <div className="p-2 rounded-lg bg-green-500/20">
-              <DollarSign size={20} className="text-green-400"/>
+              <IndianRupee size={20} className="text-green-400"/>
             </div>
           </div>
-          <h3 className="text-4xl font-bold text-white mb-2">$45,280</h3>
+          <h3 className="text-4xl font-bold text-white mb-2">₹45,280</h3>
           <div className="flex items-center gap-2 text-green-400 text-sm">
             <TrendingUp size={16}/>
             <span>+22.5% from last month</span>
           </div>
           <div className="mt-4 pt-4 border-t border-white/10">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">Target: $50,000</span>
+              <span className="text-gray-400">Target: ₹50,000</span>
               <span className="text-white font-semibold">90.5%</span>
             </div>
             <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">

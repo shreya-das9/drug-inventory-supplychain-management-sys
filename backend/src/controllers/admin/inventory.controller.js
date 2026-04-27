@@ -1,6 +1,7 @@
 
 import Inventory from "../../models/Inventory.js";
 import Drug from "../../models/Drug.js";
+import { validateArray, validateRequired } from "../../utils/validation.js";
 
 export const getAllInventory = async (req, res) => {
   try {
@@ -8,10 +9,18 @@ export const getAllInventory = async (req, res) => {
       .populate("drug", "name batchNumber category expiryDate price")
       .sort({ createdAt: -1 });
 
+    // Validate inventory data before returning
+    const validatedInventory = validateArray(
+      inventory,
+      ['_id', 'quantity'],
+      {},
+      'Inventory'
+    );
+
     res.json({
       success: true,
-      count: inventory.length,
-      inventory,
+      count: validatedInventory.length,
+      inventory: validatedInventory,
     });
   } catch (error) {
     console.error("❌ Error fetching inventory:", error);
@@ -51,8 +60,21 @@ export const addInventory = async (req, res) => {
   try {
     const { drug, quantity, warehouseLocation, batchNo } = req.body;
 
+    // Validate required fields
+    validateRequired(
+      { drug, quantity },
+      ['drug', 'quantity'],
+      'Inventory Input'
+    );
+
     if (!drug || !quantity)
       return res.status(400).json({ success: false, message: "Drug and quantity required" });
+
+    // Ensure quantity is a valid number
+    const qty = Number(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      return res.status(400).json({ success: false, message: "Quantity must be a positive number" });
+    }
 
     const drugExists = await Drug.findById(drug);
     if (!drugExists)
@@ -61,12 +83,12 @@ export const addInventory = async (req, res) => {
     let inventory = await Inventory.findOne({ drug });
 
     if (inventory) {
-      inventory.quantity += Number(quantity);
+      inventory.quantity += qty;
       await inventory.save();
     } else {
       inventory = await Inventory.create({
         drug,
-        quantity,
+        quantity: qty,
         warehouseLocation,
         batchNo,
       });

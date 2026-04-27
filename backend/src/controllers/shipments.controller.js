@@ -1,6 +1,7 @@
 import ShipmentModel from '../models/ShipmentModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import Drug from '../models/Drug.js';
+import { validateArray } from '../utils/validation.js';
 
 // Get all shipments
 const getAllShipments = async (req, res) => {
@@ -37,12 +38,20 @@ const getAllShipments = async (req, res) => {
       .skip(skip)
       .select('-__v');
     
+    // Validate shipments data before returning
+    const validatedShipments = validateArray(
+      shipments,
+      ['_id', 'status'],
+      {},
+      'Shipments'
+    );
+    
     const total = await ShipmentModel.countDocuments(query);
     
     return res.status(200).json({
       success: true,
       message: 'Shipments fetched successfully',
-      count: shipments.length,
+      count: validatedShipments.length,
       total,
       pagination: {
         currentPage: parseInt(page),
@@ -50,7 +59,7 @@ const getAllShipments = async (req, res) => {
         totalItems: total,
         itemsPerPage: parseInt(limit)
       },
-      data: shipments
+      data: validatedShipments
     });
   } catch (error) {
     console.error('Get shipments error:', error);

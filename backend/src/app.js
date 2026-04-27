@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import connectDB from "./config/db.js";
 import { initializeEmailService } from "./services/email.service.js";
+import { initializeBLEService } from "./services/ble.service.js";
 
 // Load environment variables
 dotenv.config();
@@ -17,15 +18,39 @@ await connectDB();
 // Initialize Email Service
 initializeEmailService();
 
+// Initialize BLE Service
+const BLE_ENABLED = String(process.env.BLE_ENABLED ?? "true").toLowerCase() === "true";
+
+if (BLE_ENABLED) {
+  initializeBLEService({
+    autoStart: process.env.BLE_AUTO_START === "true"
+  }).catch((error) => {
+    console.warn("⚠️ BLE initialization skipped:", error.message);
+  });
+} else {
+  console.log("ℹ️ BLE disabled via BLE_ENABLED=false");
+}
+
 // ===== MIDDLEWARE (ORDER MATTERS!) =====
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ===== CORS FIX (THIS WAS THE PROBLEM) =====
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175"
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",   // ✅ your React frontend port
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked: ${origin}`));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
   })
@@ -40,6 +65,33 @@ try {
   console.log("✅ Auth routes loaded");
 } catch (err) {
   console.warn("⚠️ Auth routes not found:", err.message);
+}
+
+// 1b. User Routes
+try {
+  const userRoutes = (await import("./routes/user.routes.js")).default;
+  app.use("/api/users", userRoutes);
+  console.log("✅ User routes loaded");
+} catch (err) {
+  console.warn("⚠️ User routes not found:", err.message);
+}
+
+// 1c. AI Routes
+try {
+  const aiRoutes = (await import("./routes/ai.routes.js")).default;
+  app.use("/api/ai", aiRoutes);
+  console.log("✅ AI routes loaded");
+} catch (err) {
+  console.warn("⚠️ AI routes not found:", err.message);
+}
+
+// 1d. Compliance Routes
+try {
+  const complianceRoutes = (await import("./routes/compliance.routes.js")).default;
+  app.use("/api/compliance", complianceRoutes);
+  console.log("✅ Compliance routes loaded");
+} catch (err) {
+  console.warn("⚠️ Compliance routes not found:", err.message);
 }
 
 // 2. Admin Drugs Routes
@@ -96,6 +148,15 @@ try {
   console.warn("⚠️ Orders routes not found:", err.message);
 }
 
+// 8. BLE Routes
+try {
+  const bleRoutes = (await import("./routes/ble.routes.js")).default;
+  app.use("/api/ble", bleRoutes);
+  console.log("✅ BLE routes loaded");
+} catch (err) {
+  console.warn("⚠️ BLE routes not found:", err.message);
+}
+
 // ===== TEST ROUTE =====
 app.get("/api/test", (req, res) => {
   res.json({ success: true, message: "Server is running!" });
@@ -119,9 +180,34 @@ app.use((err, req, res, next) => {
 });
 
 // ===== START SERVER =====
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 API running on http://localhost:${PORT}`);
-});
+const BASE_PORT = Number(process.env.PORT || 5000);
+const MAX_PORT_RETRIES = 10;
+
+const startServer = (port, retryCount = 0) => {
+  const server = app.listen(port, () => {
+    console.log(`🚀 API running on http://localhost:${port}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      if (retryCount >= MAX_PORT_RETRIES) {
+        console.error(
+          `❌ Could not start server: ports ${BASE_PORT}-${port} are already in use.`
+        );
+        process.exit(1);
+      }
+
+      const nextPort = port + 1;
+      console.warn(`⚠️ Port ${port} is in use. Retrying on ${nextPort}...`);
+      startServer(nextPort, retryCount + 1);
+      return;
+    }
+
+    console.error("❌ Server startup error:", error);
+    process.exit(1);
+  });
+};
+
+startServer(BASE_PORT);
 
  export default app;

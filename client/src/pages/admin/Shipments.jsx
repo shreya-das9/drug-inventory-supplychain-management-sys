@@ -14,9 +14,15 @@ import {
   Download,
   RefreshCw,
   TrendingUp,
-  Navigation
+  Navigation,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2
 } from "lucide-react";
 import axios from "axios";
+import ShipmentDetailsModal from "./ShipmentDetailsModal";
+import AddShipmentModal from "./AddShipmentModal";
 
 export default function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -27,6 +33,10 @@ export default function Shipments() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 12;
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedShipment, setSelectedShipment] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -40,6 +50,18 @@ export default function Shipments() {
     fetchShipments();
     fetchStats();
   }, [statusFilter, currentPage]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId && !event.target.closest('.menu-container')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
 
   const fetchShipments = async () => {
     try {
@@ -125,6 +147,73 @@ export default function Shipments() {
     shipment.supplier?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleExport = () => {
+    const headers = ['Tracking Number', 'Supplier', 'Destination', 'Status', 'Total Amount', 'Expected Delivery', 'Items'];
+    const csvData = filteredShipments.map(s => [
+      s.trackingNumber,
+      s.supplier?.name || '',
+      `${s.destination?.city}, ${s.destination?.state}`,
+      s.status,
+      s.totalAmount || 0,
+      new Date(s.expectedDeliveryDate).toLocaleDateString(),
+      s.items?.length || 0
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shipments-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleViewDetails = (shipment) => {
+    setSelectedShipment(shipment);
+    setIsDetailsModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  const handleEdit = (shipment) => {
+    console.log("Edit shipment:", shipment);
+    setOpenMenuId(null);
+  };
+
+  const handleDelete = async (shipment) => {
+    if (!window.confirm(`Are you sure you want to delete shipment ${shipment.trackingNumber}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(
+        `http://localhost:5000/api/admin/shipments/${shipment._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      setIsDetailsModalOpen(false);
+      setOpenMenuId(null);
+      fetchShipments();
+      fetchStats();
+    } catch (error) {
+      console.error("Error deleting shipment:", error);
+      alert("Failed to delete shipment. Please try again.");
+    }
+  };
+
+  const toggleMenu = (shipmentId) => {
+    setOpenMenuId(openMenuId === shipmentId ? null : shipmentId);
+  };
+
   return (
     <div className="space-y-6 pb-8">
       {/* Animated Header */}
@@ -167,7 +256,10 @@ export default function Shipments() {
           <motion.button
             whileHover={{ scale: 1.05, rotate: 180 }}
             whileTap={{ scale: 0.95 }}
-            onClick={fetchShipments}
+            onClick={() => {
+              fetchShipments();
+              fetchStats();
+            }}
             className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 backdrop-blur-xl transition-all"
           >
             <RefreshCw className="w-5 h-5 text-white/70" />
@@ -175,6 +267,7 @@ export default function Shipments() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleExport}
             className="px-5 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl font-semibold flex items-center gap-2 shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-all"
           >
             <Download className="w-5 h-5" />
@@ -261,7 +354,7 @@ export default function Shipments() {
           },
           { 
             label: "Total Value", 
-            value: `$${stats.totalValue?.toLocaleString() || 0}`, 
+            value: `₹${stats.totalValue?.toLocaleString() || 0}`, 
             gradient: "from-purple-500/20 via-pink-500/20 to-rose-500/20",
             border: "border-purple-500/30",
             icon: <DollarSign className="w-7 h-7" />,
@@ -314,8 +407,7 @@ export default function Shipments() {
               
               <p className="text-white/60 font-medium text-sm mb-2">{stat.label}</p>
               
-              {/* Mini chart */}
-              <div className="flex items-end gap-1 h-6">
+               <div className="flex items-end gap-1 h-6">
                 {stat.chart.map((height, i) => (
                   <motion.div
                     key={i}
@@ -354,18 +446,22 @@ export default function Shipments() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white/5 text-white px-6 py-4 rounded-xl border border-white/10 focus:border-cyan-500/50 focus:outline-none cursor-pointer backdrop-blur-xl"
+              className="bg-slate-800 text-white px-6 py-4 rounded-xl border border-white/10 focus:border-cyan-500/50 focus:outline-none cursor-pointer backdrop-blur-xl"
+              style={{
+                backgroundImage: 'none'
+              }}
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="in-transit">In Transit</option>
-              <option value="delivered">Delivered</option>
+              <option value="all" className="bg-slate-800 text-white">All Status</option>
+              <option value="pending" className="bg-slate-800 text-white">Pending</option>
+              <option value="processing" className="bg-slate-800 text-white">Processing</option>
+              <option value="in-transit" className="bg-slate-800 text-white">In Transit</option>
+              <option value="delivered" className="bg-slate-800 text-white">Delivered</option>
             </select>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setIsAddModalOpen(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-xl font-semibold shadow-[0_0_30px_rgba(34,211,238,0.3)] hover:shadow-[0_0_50px_rgba(34,211,238,0.5)] transition-all"
             >
               <Plus className="w-5 h-5" />
@@ -436,10 +532,58 @@ export default function Shipments() {
                           <p className="text-xs text-white/50">{shipment.supplier?.name}</p>
                         </div>
                       </div>
-                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold ${statusConfig.color}`}>
-                        {statusConfig.icon}
-                        {statusConfig.label}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold ${statusConfig.color}`}>
+                          {statusConfig.icon}
+                          {statusConfig.label}
+                        </span>
+                        <div className="relative menu-container">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => toggleMenu(shipment._id)}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                          >
+                            <MoreVertical className="w-5 h-5 text-white/50" />
+                          </motion.button>
+                          
+                          <AnimatePresence>
+                            {openMenuId === shipment._id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                className="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-xl shadow-lg overflow-hidden z-10"
+                              >
+                                <motion.button
+                                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                                  onClick={() => handleViewDetails(shipment)}
+                                  className="w-full px-4 py-3 text-left text-sm text-white flex items-center gap-3 transition-colors"
+                                >
+                                  <Eye className="w-4 h-4 text-cyan-400" />
+                                  View Details
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                                  onClick={() => handleEdit(shipment)}
+                                  className="w-full px-4 py-3 text-left text-sm text-white flex items-center gap-3 transition-colors"
+                                >
+                                  <Edit className="w-4 h-4 text-blue-400" />
+                                  Edit Shipment
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                                  onClick={() => handleDelete(shipment)}
+                                  className="w-full px-4 py-3 text-left text-sm text-red-400 flex items-center gap-3 transition-colors border-t border-white/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete Shipment
+                                </motion.button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-3">
@@ -454,7 +598,7 @@ export default function Shipments() {
                       <div className="flex items-center justify-between pt-3 border-t border-white/10">
                         <div className="flex items-center gap-2">
                           <DollarSign className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold text-white text-lg">${shipment.totalAmount?.toLocaleString()}</span>
+                          <span className="font-bold text-white text-lg">₹{shipment.totalAmount?.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-white/60">
                           <Package className="w-4 h-4 text-cyan-400" />
@@ -466,6 +610,7 @@ export default function Shipments() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      onClick={() => handleViewDetails(shipment)}
                       className="w-full mt-4 py-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 rounded-xl text-sm font-medium text-cyan-400 border border-cyan-500/20 transition-all"
                     >
                       Track Shipment →
@@ -511,6 +656,28 @@ export default function Shipments() {
           </motion.button>
         </motion.div>
       )}
+
+      {/* Shipment Details Modal */}
+      <ShipmentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedShipment(null);
+        }}
+        shipment={selectedShipment}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
+      {/* Add Shipment Modal */}
+      <AddShipmentModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          fetchShipments();
+          fetchStats();
+        }}
+      />
     </div>
   );
 }

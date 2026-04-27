@@ -42,3 +42,52 @@ export const getEmailTransporter = () => {
   }
   return transporter;
 };
+
+export const sendBleAlertEmail = async ({ tracking, to } = {}) => {
+  const mailer = getEmailTransporter();
+
+  if (!tracking) {
+    throw new Error("Missing tracking payload for BLE alert email");
+  }
+
+  const recipient = to || process.env.BLE_ALERT_EMAIL || process.env.EMAIL_USER;
+
+  if (!recipient) {
+    throw new Error("No recipient configured for BLE alert email");
+  }
+
+  const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const timestamp = new Date(tracking.timestamp || Date.now()).toLocaleString();
+
+  const subject = `BLE ALERT: ${tracking.batchId} exceeded temperature threshold`;
+  const text = [
+    "BLE Alert Triggered",
+    `Device ID: ${tracking.deviceId}`,
+    `Batch ID: ${tracking.batchId}`,
+    `Temperature: ${tracking.temperature}°C`,
+    `Status: ${tracking.status}`,
+    `Timestamp: ${timestamp}`
+  ].join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+      <h2 style="color:#dc2626;">BLE Alert Triggered</h2>
+      <p>A BLE temperature alert was detected.</p>
+      <ul>
+        <li><strong>Device ID:</strong> ${tracking.deviceId}</li>
+        <li><strong>Batch ID:</strong> ${tracking.batchId}</li>
+        <li><strong>Temperature:</strong> ${tracking.temperature}°C</li>
+        <li><strong>Status:</strong> ${tracking.status}</li>
+        <li><strong>Timestamp:</strong> ${timestamp}</li>
+      </ul>
+    </div>
+  `;
+
+  return mailer.sendMail({
+    from: fromAddress,
+    to: recipient,
+    subject,
+    text,
+    html
+  });
+};

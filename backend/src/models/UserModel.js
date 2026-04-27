@@ -15,6 +15,26 @@ const UserSchema = new mongoose.Schema({
   resetTokenExpiry: { type: Date }
 }, { timestamps: true });
 
+UserSchema.pre("validate", function (next) {
+  if (this.email) {
+    this.email = String(this.email).trim().toLowerCase();
+  }
+
+  if (String(this.role || "").toUpperCase() === "ADMIN") {
+    const allowedAdminEmails = String(process.env.ADMIN_ALLOWED_EMAILS || "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAllowed = allowedAdminEmails.includes(String(this.email || "").toLowerCase());
+    if (!isAllowed) {
+      return next(new Error("This email is not authorized to create an admin account"));
+    }
+  }
+
+  return next();
+});
+
 // Encrypt password
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
