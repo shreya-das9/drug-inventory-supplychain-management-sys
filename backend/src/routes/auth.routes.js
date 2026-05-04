@@ -4,24 +4,24 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/UserModel.js";
+import AdminAllowedEmail from "../models/AdminAllowedEmailModel.js";
 import { getEmailTransporter } from "../services/email.service.js";
 
 const router = express.Router();
 
-const parseAllowedAdminEmails = () => {
-  const raw = process.env.ADMIN_ALLOWED_EMAILS || "";
-  return raw
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-};
-
-const isAdminAllowedEmail = (email) => {
-  const allowedEmails = parseAllowedAdminEmails();
-  if (!allowedEmails.length) {
+// Check if email is authorized to be admin (from database)
+const isAdminAllowedEmail = async (email) => {
+  try {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const allowedEmail = await AdminAllowedEmail.findOne({
+      email: normalizedEmail,
+      status: "ACTIVE"
+    });
+    return !!allowedEmail;
+  } catch (error) {
+    console.error("Error checking admin email:", error.message);
     return false;
   }
-  return allowedEmails.includes(String(email || "").toLowerCase());
 };
 
 // =======================
@@ -34,7 +34,7 @@ router.post("/signup", async (req, res) => {
     const normalizedRole = String(req.body.role || "USER").toUpperCase();
     const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    if (normalizedRole === "ADMIN" && !isAdminAllowedEmail(normalizedEmail)) {
+    if (normalizedRole === "ADMIN" && !(await isAdminAllowedEmail(normalizedEmail))) {
       return res.status(403).json({
         message: "This email is not authorized to create an admin account"
       });
@@ -87,7 +87,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    if (user.role === "ADMIN" && !isAdminAllowedEmail(normalizedEmail)) {
+    if (user.role === "ADMIN" && !(await isAdminAllowedEmail(normalizedEmail))) {
       return res.status(403).json({
         message: "This admin email is not authorized"
       });

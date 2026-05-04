@@ -19,19 +19,9 @@ UserSchema.pre("validate", function (next) {
   if (this.email) {
     this.email = String(this.email).trim().toLowerCase();
   }
-
-  if (String(this.role || "").toUpperCase() === "ADMIN") {
-    const allowedAdminEmails = String(process.env.ADMIN_ALLOWED_EMAILS || "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean);
-
-    const isAllowed = allowedAdminEmails.includes(String(this.email || "").toLowerCase());
-    if (!isAllowed) {
-      return next(new Error("This email is not authorized to create an admin account"));
-    }
-  }
-
+  
+  // Admin email authorization is now checked in auth.routes.js
+  // Using database instead of environment variables
   return next();
 });
 

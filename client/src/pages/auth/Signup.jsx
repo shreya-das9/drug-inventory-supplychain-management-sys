@@ -22,14 +22,6 @@ import { signup } from "../../services/auth.api";
 import logo from "../../assets/logo.png";
 import doctorImg from "../../assets/doctorimage.jpg";
 
-const ADMIN_ALLOWED_EMAILS = (
-  import.meta.env.VITE_ADMIN_ALLOWED_EMAILS ||
-  "drug.inventory.management.system@gmail.com"
-)
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
-
 export default function Signup() {
   const [form, setForm] = useState({
     name: "",
@@ -52,19 +44,8 @@ export default function Signup() {
     if (error) setError("");
   };
 
-  const isAdminEmailAllowed = (email) =>
-    ADMIN_ALLOWED_EMAILS.includes(String(email || "").trim().toLowerCase());
-
-  const isAdminSelectionBlocked =
-    form.role === "ADMIN" && !isAdminEmailAllowed(form.email);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (isAdminSelectionBlocked) {
-      setError("Only authorized admin email IDs can create admin accounts");
-      return;
-    }
 
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match");
@@ -81,6 +62,7 @@ export default function Signup() {
       else if (data.user.role === "RETAILER") navigate("/retailer/home");
       else navigate("/user/home");
     } catch (err) {
+      // Backend will validate admin email authorization
       setError(err.response?.data?.message || "Signup failed");
     } finally {
       setIsLoading(false);
@@ -345,7 +327,7 @@ export default function Signup() {
               {/* Submit */}
               <motion.button
                 type="submit"
-                disabled={isLoading || isAdminSelectionBlocked}
+                disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 py-2 rounded-lg font-bold text-white shadow-lg hover:shadow-xl transition disabled:opacity-50"
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.95, rotate: -1 }}

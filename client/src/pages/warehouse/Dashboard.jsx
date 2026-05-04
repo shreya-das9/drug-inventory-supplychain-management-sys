@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Warehouse,
   Search,
@@ -12,10 +13,12 @@ import {
   TrendingDown,
   Boxes,
   ShieldAlert,
+  LogOut,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { request } = useApi();
   const [stats, setStats] = React.useState(null);
   const [alerts, setAlerts] = React.useState({ expiryAlerts: [], lowStockAlerts: [] });
@@ -23,6 +26,13 @@ export default function Dashboard() {
   const [searchText, setSearchText] = React.useState("");
   const [showAlerts, setShowAlerts] = React.useState(false);
   const [lastUpdate, setLastUpdate] = React.useState(new Date());
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   const handleRefresh = React.useCallback(async () => {
     try {
@@ -164,6 +174,15 @@ export default function Dashboard() {
               <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-violet-500 text-[10px] flex items-center justify-center">
                 {(alerts.expiryAlerts?.length || 0) + (alerts.lowStockAlerts?.length || 0)}
               </span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 transition shadow-[0_0_25px_rgba(220,38,38,0.35)] inline-flex items-center gap-2 font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
             </motion.button>
           </div>
         </motion.div>

@@ -2,14 +2,18 @@
 import Drug from "../../models/Drug.js";
 import Inventory from "../../models/Inventory.js";
 import Scanlog from "../../models/ScanlogModel.js";
+import Supplier from "../../models/SupplierModel.js";
+import Shipment from "../../models/ShipmentModel.js";
 import { validateArray, validateExpiryAlert, validateLowStockAlert, validateRequired } from "../../utils/validation.js";
 
 export const getStats = async (req, res) => {
   try {
-    const [totalDrugs, lowStockCount, expiredCount] = await Promise.all([
+    const [totalDrugs, lowStockCount, expiredCount, totalSuppliers, activeShipments] = await Promise.all([
       Drug.countDocuments(),
       Inventory.countDocuments({ quantity: { $lt: 10 } }),
       Drug.countDocuments({ expiryDate: { $lt: new Date() } }),
+      Supplier.countDocuments({ status: "APPROVED" }),
+      Shipment.countDocuments({ status: { $in: ["in-transit", "processing"] } }),
     ]);
 
     // Validate required fields and types
@@ -17,10 +21,12 @@ export const getStats = async (req, res) => {
       totalDrugs: Number(totalDrugs) || 0,
       lowStockCount: Number(lowStockCount) || 0,
       expiredCount: Number(expiredCount) || 0,
+      totalSuppliers: Number(totalSuppliers) || 0,
+      activeShipments: Number(activeShipments) || 0,
     };
 
     // Ensure all stats are non-negative numbers
-    if (stats.totalDrugs < 0 || stats.lowStockCount < 0 || stats.expiredCount < 0) {
+    if (Object.values(stats).some(val => val < 0)) {
       throw new Error("Invalid stat counts: all values must be non-negative");
     }
 

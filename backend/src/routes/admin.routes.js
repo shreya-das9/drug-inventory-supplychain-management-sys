@@ -4,6 +4,9 @@ const router = express.Router();
 // Import middleware (FIXED: removed requireRole import, using correct function names)
 import { verifyToken, isAdmin, isWarehouseAdmin } from "../middleware/auth.middleware.js";
 
+// Import models
+import AdminAllowedEmail from '../models/AdminAllowedEmailModel.js';
+
 // Import controllers
 import supplierController from '../controllers/suppliers.controller.js';
 import shipmentController from '../controllers/shipments.controller.js';
@@ -98,5 +101,108 @@ router.patch('/orders/:id/status', orderController.updateOrderStatus);
 // PATCH /api/admin/orders/:id/cancel
 // Body: { "reason": "Out of stock" }
 router.patch('/orders/:id/cancel', orderController.cancelOrder);
+
+// ==================== ADMIN EMAIL MANAGEMENT ROUTES ====================
+
+// Get all authorized admin emails
+// GET /api/admin/admin-emails
+router.get('/admin-emails', async (req, res) => {
+  try {
+    const adminEmails = await AdminAllowedEmail.find()
+      .select('-_id email status createdAt updatedAt reason')
+      .lean();
+    res.json({
+      message: 'Admin emails retrieved',
+      data: adminEmails,
+      count: adminEmails.length
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving admin emails', error: error.message });
+  }
+});
+
+// Add new authorized admin email
+// POST /api/admin/admin-emails
+// Body: { "email": "new.admin@example.com", "reason": "..." }
+router.post('/admin-emails', async (req, res) => {
+  try {
+    const { email, reason } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    
+    const normalizedEmail = String(email).trim().toLowerCase();
+    
+    // Check if already exists
+    const existing = await AdminAllowedEmail.findOne({ email: normalizedEmail });
+    if (existing) {
+      return res.status(400).json({ message: 'Email already authorized' });
+    }
+    
+    const adminEmail = await AdminAllowedEmail.create({
+      email: normalizedEmail,
+      status: 'ACTIVE',
+      addedBy: req.user?.email || 'ADMIN',
+      reason: reason || 'Manually added'
+    });
+    
+    res.status(201).json({
+      message: 'Admin email added successfully',
+      data: adminEmail
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding admin email', error: error.message });
+  }
+});
+
+// Remove authorized admin email
+// DELETE /api/admin/admin-emails/:email
+router.delete('/admin-emails/:email', async (req, res) => {
+  try {
+    const email = String(req.params.email).trim().toLowerCase();
+    
+    const result = await AdminAllowedEmail.deleteOne({ email });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Admin email not found' });
+    }
+    
+    res.json({ message: 'Admin email removed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error removing admin email', error: error.message });
+  }
+});
+
+// Update admin email status
+// PATCH /api/admin/admin-emails/:email
+// Body: { "status": "ACTIVE" or "INACTIVE" }
+router.patch('/admin-emails/:email', async (req, res) => {
+  try {
+    const email = String(req.params.email).trim().toLowerCase();
+    const { status } = req.body;
+    
+    if (!['ACTIVE', 'INACTIVE'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be ACTIVE or INACTIVE' });
+    }
+    
+    const adminEmail = await AdminAllowedEmail.findOneAndUpdate(
+      { email },
+      { status },
+      { new: true }
+    );
+    
+    if (!adminEmail) {
+      return res.status(404).json({ message: 'Admin email not found' });
+    }
+    
+    res.json({
+      message: 'Admin email status updated',
+      data: adminEmail
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating admin email', error: error.message });
+  }
+});
 
 export default router;

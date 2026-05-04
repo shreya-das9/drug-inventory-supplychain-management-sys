@@ -650,19 +650,27 @@ export default function Dashboard() {
         const [statsRes] = await Promise.all([
           request("GET", "/api/admin/dashboard/stats")
         ]);
-        if (statsRes) setStats(statsRes);
+        if (statsRes?.data) {
+          // Map backend response to frontend expectations
+          setStats({
+            totalDrugs: statsRes.data.totalDrugs || 0,
+            lowStockItems: statsRes.data.lowStockCount || 0,
+            suppliers: statsRes.data.totalSuppliers || 0,
+            activeShipments: statsRes.data.activeShipments || 0,
+          });
+        }
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       }
     };
     fetchData();
-  }, []);
+  }, [request]);
 
   const statCards = [
     { label: "Total Drugs", value: stats.totalDrugs, icon: <Package size={24} />, color: "#5b7cff", trend: "+10%", trendUp: true },
-    { label: "Suppliers", value: stats.totalSuppliers || stats.suppliers, icon: <Users size={24} />, color: "#1a4d5c", trend: "+5%", trendUp: true },
-    { label: "Active Shipments", value: stats.totalShipments || stats.activeShipments, icon: <Truck size={24} />, color: "#7c3aed", trend: "+15%", trendUp: true },
-    { label: "Low Stock Items", value: stats.lowStockCount || stats.lowStockItems, icon: <AlertTriangle size={24} />, color: "#ef4444", trend: "-8%", trendUp: false },
+    { label: "Suppliers", value: stats.suppliers, icon: <Users size={24} />, color: "#1a4d5c", trend: "+5%", trendUp: true },
+    { label: "Active Shipments", value: stats.activeShipments, icon: <Truck size={24} />, color: "#7c3aed", trend: "+15%", trendUp: true },
+    { label: "Low Stock Items", value: stats.lowStockItems, icon: <AlertTriangle size={24} />, color: "#ef4444", trend: "-8%", trendUp: false },
   ];
 
   const getSalesData = () => {

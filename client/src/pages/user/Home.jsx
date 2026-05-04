@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Search,
@@ -17,6 +18,7 @@ import {
   Navigation,
   TrendingUp,
   TrendingDown,
+  LogOut,
 } from "lucide-react";
 
 const baseOrders = [
@@ -46,6 +48,7 @@ const statusStyle = {
 };
 
 export default function UserHome() {
+  const navigate = useNavigate();
   const [searchText, setSearchText] = React.useState("");
   const [showAlerts, setShowAlerts] = React.useState(false);
   const [showAllOrders, setShowAllOrders] = React.useState(false);
@@ -58,6 +61,13 @@ export default function UserHome() {
     qty: 1,
     amount: "",
   });
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   const filteredOrders = React.useMemo(() => {
     const query = searchText.trim().toLowerCase();
@@ -222,6 +232,15 @@ export default function UserHome() {
             >
               <ShoppingCart className="w-4 h-4" />
               New Order
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 transition shadow-[0_0_25px_rgba(220,38,38,0.35)] inline-flex items-center gap-2 font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
             </motion.button>
           </div>
         </motion.div>

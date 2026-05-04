@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   ShoppingCart,
   Search,
@@ -17,6 +18,7 @@ import {
   MoreVertical,
   Eye,
   Download,
+  LogOut,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
 
@@ -66,6 +68,7 @@ const statusColors = {
 };
 
 export default function RetailerHome() {
+  const navigate = useNavigate();
   const { request } = useApi();
   const [orders, setOrders] = React.useState([]);
   const [shipments, setShipments] = React.useState([]);
@@ -76,6 +79,13 @@ export default function RetailerHome() {
   const [lastUpdate, setLastUpdate] = React.useState(new Date());
   const [statusFilter, setStatusFilter] = React.useState("All");
   const [showAllOrders, setShowAllOrders] = React.useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   const fetchData = React.useCallback(async () => {
     try {
@@ -234,6 +244,15 @@ export default function RetailerHome() {
               {alerts.length > 0 && (
                 <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full"></span>
               )}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 transition shadow-[0_0_25px_rgba(220,38,38,0.35)] inline-flex items-center gap-2 font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
             </motion.button>
           </div>
         </motion.div>
