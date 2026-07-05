@@ -2,6 +2,7 @@ import express from "express";
 import User from "../models/UserModel.js";
 import { verifyToken, isAdmin } from "../middleware/auth.middleware.js";
 import { successResponse, errorResponse } from "../utils/response.js";
+import { createRetailerOrderWorkflow } from "../services/retailerOrderWorkflow.service.js";
 
 const router = express.Router();
 
@@ -61,6 +62,31 @@ router.get("/", isAdmin, async (req, res) => {
 
 router.get("/roles", (req, res) => {
   return successResponse(res, 200, "Roles fetched successfully", ["ADMIN", "WAREHOUSE", "RETAILER", "USER"]);
+});
+
+router.post("/retailer/orders", async (req, res) => {
+  try {
+    const role = String(req.user?.role || "").toUpperCase();
+
+    if (role !== "RETAILER") {
+      return errorResponse(res, 403, "Access denied. Retailer role required.");
+    }
+
+    const { medicine, quantity, qty, totalAmount, purchaseOrderNumber } = req.body;
+    const result = await createRetailerOrderWorkflow({
+      user: req.user,
+      medicine,
+      quantity: quantity ?? qty,
+      totalAmount,
+      purchaseOrderNumber,
+    });
+
+    const statusCode = result.workflow.inventoryAvailable ? 201 : 202;
+    return successResponse(res, statusCode, "Retailer order created successfully", result);
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    return errorResponse(res, statusCode, error.message || "Failed to create retailer order");
+  }
 });
 
 export default router;

@@ -21,7 +21,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { request } = useApi();
   const [stats, setStats] = React.useState(null);
-  const [alerts, setAlerts] = React.useState({ expiryAlerts: [], lowStockAlerts: [] });
+  const [alerts, setAlerts] = React.useState({ expiryAlerts: [], lowStockAlerts: [], incomingOrders: [] });
   const [pageLoading, setPageLoading] = React.useState(true);
   const [searchText, setSearchText] = React.useState("");
   const [showAlerts, setShowAlerts] = React.useState(false);
@@ -43,7 +43,7 @@ export default function Dashboard() {
       ]);
 
       setStats(statsRes?.data || null);
-      setAlerts(alertsRes?.data || { expiryAlerts: [], lowStockAlerts: [] });
+      setAlerts(alertsRes?.data || { expiryAlerts: [], lowStockAlerts: [], incomingOrders: [] });
       setLastUpdate(new Date());
     } catch (err) {
       console.error("Error fetching warehouse dashboard data:", err);
@@ -75,6 +75,16 @@ export default function Dashboard() {
       )
     );
   }, [alerts.lowStockAlerts, searchText]);
+
+  const filteredIncomingOrders = React.useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return alerts.incomingOrders || [];
+    return (alerts.incomingOrders || []).filter((order) =>
+      [order.orderNumber, order.purchaseOrderNumber, order.medicine, order.status].some((value) =>
+        String(value || "").toLowerCase().includes(query)
+      )
+    );
+  }, [alerts.incomingOrders, searchText]);
 
   const statCards = React.useMemo(() => {
     const totalDrugs = Number(stats?.totalDrugs || 0);
@@ -295,7 +305,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -361,6 +371,49 @@ export default function Dashboard() {
                 ))
               ) : (
                 <p className="text-white/50">No low stock alerts found.</p>
+              )}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.42 }}
+            className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden"
+          >
+            <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2 font-semibold">
+              <Package className="w-5 h-5 text-cyan-300" />
+              Incoming Orders
+            </div>
+            <div className="p-5 space-y-3 max-h-[420px] overflow-y-auto">
+              {pageLoading ? (
+                <div className="text-white/50">Loading incoming orders...</div>
+              ) : filteredIncomingOrders.length > 0 ? (
+                filteredIncomingOrders.map((order, index) => (
+                  <motion.div
+                    key={order.id || index}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.48 + index * 0.04 }}
+                    className={`p-4 rounded-xl border ${order.inventoryAvailable ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-white">{order.orderNumber}</p>
+                        <p className="text-sm text-white/70 mt-1">{order.medicine}</p>
+                        <p className="text-xs text-white/55 mt-1">
+                          PO: {order.purchaseOrderNumber || "N/A"} • Qty: {order.quantity || 0}
+                        </p>
+                      </div>
+                      <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold ${order.inventoryAvailable ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
+                        {order.inventoryAvailable ? "Stock Available" : "Stock Shortage"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/60 mt-3">{order.warehouseAction}</p>
+                  </motion.div>
+                ))
+              ) : (
+                <p className="text-white/50">No incoming orders yet.</p>
               )}
             </div>
           </motion.div>

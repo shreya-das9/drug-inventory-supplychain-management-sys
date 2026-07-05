@@ -1,6 +1,7 @@
 //SHREYA'S CODE.
 import Drug from "../../models/Drug.js";
 import Inventory from "../../models/Inventory.js";
+import Order from "../../models/OrderModel.js";
 import Scanlog from "../../models/ScanlogModel.js";
 import Supplier from "../../models/SupplierModel.js";
 import Shipment from "../../models/ShipmentModel.js";
@@ -45,7 +46,7 @@ export const getAlerts = async (req, res) => {
     const today = new Date();
     const nextMonth = new Date(today.setMonth(today.getMonth() + 1));
 
-    const [expiryAlerts, lowStockAlerts, securityTransitAlertsRaw] = await Promise.all([
+    const [expiryAlerts, lowStockAlerts, securityTransitAlertsRaw, incomingOrdersRaw] = await Promise.all([
       Drug.find({
         expiryDate: { $lte: nextMonth, $gte: new Date() },
       }).select("name batchNumber expiryDate"),
@@ -55,7 +56,14 @@ export const getAlerts = async (req, res) => {
       Scanlog.find({ alertCodes: "TRANSIT_TIME_EXCEEDED" })
         .sort({ scannedAt: -1 })
         .limit(50)
-        .select("bleId stage scannedAt alertCodes location details verificationStatus")
+        .select("bleId stage scannedAt alertCodes location details verificationStatus"),
+      Order.find({
+        status: { $in: ["pending", "confirmed"] },
+      })
+        .sort({ createdAt: -1 })
+        .limit(12)
+        .populate("items.drug", "name batchNumber price")
+        .populate("createdBy", "name email role")
     ]);
 
     const securityTransitAlerts = securityTransitAlertsRaw.map((log) => ({
@@ -104,13 +112,41 @@ export const getAlerts = async (req, res) => {
       "Low Stock Alerts"
     );
 
+    const incomingOrders = validateArray(
+      incomingOrdersRaw.map((order) => {
+        const item = order.items?.[0] || {};
+        const medicineName = item.drug?.name || "Unknown";
+        const inventoryAvailable = String(order.status || "").toLowerCase() === "confirmed";
+
+        return {
+          id: order._id,
+          orderNumber: order.orderNumber,
+          purchaseOrderNumber: order.purchaseOrderNumber,
+          medicine: medicineName,
+          quantity: item.quantity || 0,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          inventoryAvailable,
+          warehouseAction: inventoryAvailable
+            ? "Confirm order and allocate BLE smart package"
+            : "Notify retailer and admin of stock shortage",
+          createdAt: order.createdAt,
+          createdBy: order.createdBy,
+        };
+      }),
+      ["id", "orderNumber", "medicine"],
+      {},
+      "Incoming Orders"
+    );
+
     res.status(200).json({
       success: true,
       data: {
         expiryAlerts: validatedExpiryAlerts,
         lowStockAlerts: validatedLowStockAlerts,
         securityTransitAlerts,
-        totalAlerts: expiryAlerts.length + lowStockAlerts.length + securityTransitAlerts.length,
+        incomingOrders,
+        totalAlerts: expiryAlerts.length + lowStockAlerts.length + securityTransitAlerts.length + incomingOrders.length,
       },
     });
   } catch (error) {

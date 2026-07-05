@@ -19,6 +19,7 @@ import {
   Eye,
   Download,
   LogOut,
+  X,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
 
@@ -79,12 +80,60 @@ export default function RetailerHome() {
   const [lastUpdate, setLastUpdate] = React.useState(new Date());
   const [statusFilter, setStatusFilter] = React.useState("All");
   const [showAllOrders, setShowAllOrders] = React.useState(false);
+  const [isOrderModalOpen, setIsOrderModalOpen] = React.useState(false);
+  const [newOrder, setNewOrder] = React.useState({
+    medicine: "",
+    quantity: 1,
+    purchaseOrderNumber: "",
+    totalAmount: "",
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const resetOrderForm = () => {
+    setNewOrder({
+      medicine: "",
+      quantity: 1,
+      purchaseOrderNumber: "",
+      totalAmount: "",
+    });
+  };
+
+  const handleCreateOrder = async (event) => {
+    event.preventDefault();
+
+    const medicine = newOrder.medicine.trim();
+    if (!medicine) return;
+
+    try {
+      const response = await request("POST", "/api/users/retailer/orders", {
+        medicine,
+        quantity: Number(newOrder.quantity) || 1,
+        purchaseOrderNumber: newOrder.purchaseOrderNumber.trim(),
+        totalAmount: newOrder.totalAmount,
+      });
+
+      const createdOrder = response?.data?.order;
+      if (createdOrder) {
+        setOrders((prev) => [createdOrder, ...prev]);
+        setStats((prev) => ({
+          ...(prev || {}),
+          totalOrders: (prev?.totalOrders || 0) + 1,
+          pendingOrders: (prev?.pendingOrders || 0) + (createdOrder.status === "Pending" ? 1 : 0),
+        }));
+      }
+
+      setLastUpdate(new Date());
+      setIsOrderModalOpen(false);
+      resetOrderForm();
+    } catch (error) {
+      console.error("Failed to create retailer order:", error);
+    }
   };
 
   const fetchData = React.useCallback(async () => {
@@ -483,7 +532,11 @@ export default function RetailerHome() {
             <div className="bg-gradient-to-br from-slate-900/40 to-slate-800/40 border border-white/10 rounded-2xl p-6 backdrop-blur-xl">
               <h3 className="text-lg font-bold text-white mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <button className="w-full py-2 px-4 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/50 rounded-lg text-violet-300 font-semibold text-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsOrderModalOpen(true)}
+                  className="w-full py-2 px-4 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/50 rounded-lg text-violet-300 font-semibold text-sm transition-colors"
+                >
                   New Order
                 </button>
                 <button className="w-full py-2 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 rounded-lg text-cyan-300 font-semibold text-sm transition-colors">
@@ -496,6 +549,124 @@ export default function RetailerHome() {
             </div>
           </motion.div>
         </div>
+
+        <AnimatePresence>
+          {isOrderModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            >
+              <motion.form
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                onSubmit={handleCreateOrder}
+                className="w-full max-w-lg space-y-4 rounded-2xl border border-white/10 bg-slate-900 p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Place New Order</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOrderModalOpen(false);
+                      resetOrderForm();
+                    }}
+                    className="rounded-lg p-2 hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Medicine Name</label>
+                  <input
+                    value={newOrder.medicine}
+                    onChange={(event) =>
+                      setNewOrder((prev) => ({
+                        ...prev,
+                        medicine: event.target.value,
+                      }))
+                    }
+                    required
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="Enter medicine name"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm text-white/70">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newOrder.quantity}
+                      onChange={(event) =>
+                        setNewOrder((prev) => ({
+                          ...prev,
+                          quantity: event.target.value,
+                        }))
+                      }
+                      required
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm text-white/70">Amount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newOrder.totalAmount}
+                    onChange={(event) =>
+                      setNewOrder((prev) => ({
+                        ...prev,
+                        totalAmount: event.target.value,
+                      }))
+                    }
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                      placeholder="Optional"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Purchase Order Number</label>
+                  <input
+                    value={newOrder.purchaseOrderNumber}
+                    onChange={(event) =>
+                      setNewOrder((prev) => ({
+                        ...prev,
+                        purchaseOrderNumber: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="Optional"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOrderModalOpen(false);
+                      resetOrderForm();
+                    }}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2.5 font-semibold hover:from-violet-500 hover:to-indigo-500"
+                  >
+                    Create Order
+                  </button>
+                </div>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Last Updated */}
         <div className="text-center text-white/40 text-xs">

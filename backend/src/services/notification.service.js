@@ -144,6 +144,37 @@ export const sendShipmentUpdate = async ({ recipientEmail, shipmentId, status, l
   }
 };
 
+/**
+ * Send a retailer order workflow notification.
+ * Used to notify warehouse/admin users about a new retailer order or stock shortage.
+ */
+export const sendOrderWorkflowNotification = async ({ recipientEmail, orderNumber, medicine, quantity, totalAmount, status, nextStep }) => {
+  try {
+    const mailer = getEmailTransporter();
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to: recipientEmail,
+      subject: `📦 Retailer Order ${status === "SHORTAGE" ? "Stock Alert" : "Notification"}: ${orderNumber}`,
+      html: `
+        <h2>Retailer Order Workflow Update</h2>
+        <p><strong>Order Number:</strong> ${orderNumber}</p>
+        <p><strong>Medicine:</strong> ${medicine}</p>
+        <p><strong>Quantity:</strong> ${quantity}</p>
+        <p><strong>Total Amount:</strong> ₹${Number(totalAmount || 0).toFixed(2)}</p>
+        <p><strong>Status:</strong> ${status}</p>
+        <p><strong>Next Step:</strong> ${nextStep}</p>
+      `
+    };
+
+    await mailer.sendMail(mailOptions);
+    console.log(`✅ Retailer order workflow notification sent to ${recipientEmail}`);
+  } catch (error) {
+    console.error("❌ Failed to send retailer order workflow notification:", error);
+    throw error;
+  }
+};
+
 // ============================================
 // BLE ALERTS (via email)
 // ============================================
@@ -192,6 +223,7 @@ export default {
   sendOrderConfirmation,
   sendShipmentUpdate,
   sendBleSecurityAlert,
+  sendOrderWorkflowNotification,
   sendPushNotification,
   sendSmsNotification
 };

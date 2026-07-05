@@ -60,7 +60,7 @@ export default function Signup() {
       if (data.user.role === "ADMIN") navigate("/admin/dashboard");
       else if (data.user.role === "WAREHOUSE") navigate("/warehouse/dashboard");
       else if (data.user.role === "RETAILER") navigate("/retailer/home");
-      else navigate("/user/home");
+      else navigate("/unauthorized");
     } catch (err) {
       // Backend will validate admin email authorization
       setError(err.response?.data?.message || "Signup failed");

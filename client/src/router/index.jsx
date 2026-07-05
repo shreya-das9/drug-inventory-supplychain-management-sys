@@ -7,7 +7,6 @@ import AdminDashboard from "../pages/admin/Dashboard";
 import AdminDrugs from "../pages/admin/Drugs";
 import AdminInventory from "../pages/admin/Inventory";
 import WarehouseDashboard from "../pages/warehouse/Dashboard";
-import UserHome from "../pages/user/Home";
 import RetailerHome from "../pages/retailer/Home";
 import AuthGuard from "../components/auth/AuthGuard";
 import RoleGuard from "../components/auth/RoleGuard";
@@ -41,15 +40,6 @@ export default function AppRouter() {
           <AuthGuard>
             <RoleGuard allowedRoles={["WAREHOUSE"]}>
               <WarehouseDashboard />
-            </RoleGuard>
-          </AuthGuard>
-        } />
-
-        {/* User */}
-        <Route path="/user/home" element={
-          <AuthGuard>
-            <RoleGuard allowedRoles={["USER"]}>
-              <UserHome />
             </RoleGuard>
           </AuthGuard>
         } />

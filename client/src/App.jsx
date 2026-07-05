@@ -163,7 +163,6 @@ import Orders from "./pages/admin/Orders";
 import Alerts from "./pages/admin/Alerts";
 
 import WarehouseDashboard from "./pages/warehouse/Dashboard";
-import UserHome from "./pages/user/Home";
 import RetailerHome from "./pages/retailer/Home";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
@@ -210,16 +209,6 @@ export default function App() {
             <AuthGuard>
               <RoleGuard allowedRoles={["WAREHOUSE"]}>
                 <WarehouseDashboard />
-              </RoleGuard>
-            </AuthGuard>
-          }
-        />
-        <Route
-          path="/user/home"
-          element={
-            <AuthGuard>
-              <RoleGuard allowedRoles={["USER"]}>
-                <UserHome />
               </RoleGuard>
             </AuthGuard>
           }

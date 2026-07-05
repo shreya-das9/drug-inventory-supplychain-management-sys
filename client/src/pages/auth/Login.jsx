@@ -118,7 +118,7 @@ export default function Login() {
       if (data.user.role === "ADMIN") navigate("/admin/dashboard");
       else if (data.user.role === "WAREHOUSE") navigate("/warehouse/dashboard");
       else if (data.user.role === "RETAILER") navigate("/retailer/home");
-      else navigate("/user/home");
+      else navigate("/unauthorized");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {

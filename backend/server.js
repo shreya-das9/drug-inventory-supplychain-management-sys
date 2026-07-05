@@ -146,6 +146,11 @@ import authRoutes from "./routes/auth.routes.js";
 app.use("/api/auth", authRoutes);
 console.log("✅ Auth routes loaded");
 
+// User routes
+import userRoutes from "./routes/user.routes.js";
+app.use("/api/users", userRoutes);
+console.log("✅ User routes loaded");
+
 // Admin Dashboard routes
 import dashboardRoutes from "./routes/admin/dashboard.routes.js";
 app.use("/api/admin/dashboard", dashboardRoutes);
