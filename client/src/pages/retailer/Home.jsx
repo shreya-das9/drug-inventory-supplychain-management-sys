@@ -20,6 +20,8 @@ import {
   Download,
   LogOut,
   X,
+  Trash2,
+  XCircle,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
 
@@ -87,12 +89,58 @@ export default function RetailerHome() {
     purchaseOrderNumber: "",
     totalAmount: "",
   });
+  const [notification, setNotification] = React.useState(null);
+  const [actionLoading, setActionLoading] = React.useState(null);
+  const [cancelReasonModal, setCancelReasonModal] = React.useState({ show: false, orderId: null });
+  const [cancelReason, setCancelReason] = React.useState("");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const showNotification = (message, type = "success") => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm("Are you sure you want to delete this order?")) return;
+
+    try {
+      setActionLoading(orderId);
+      await request("DELETE", `/api/users/retailer/orders/${orderId}`);
+      setOrders((prev) => prev.filter((o) => o._id !== orderId));
+      showNotification("Order deleted successfully", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to delete order", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    const orderId = cancelReasonModal.orderId;
+    if (!orderId) return;
+
+    try {
+      setActionLoading(orderId);
+      await request("PATCH", `/api/users/retailer/orders/${orderId}/cancel`, {
+        reason: cancelReason.trim(),
+      });
+      setOrders((prev) =>
+        prev.map((o) => (o._id === orderId ? { ...o, status: "cancelled" } : o))
+      );
+      showNotification("Order cancelled successfully", "success");
+      setCancelReasonModal({ show: false, orderId: null });
+      setCancelReason("");
+    } catch (error) {
+      showNotification(error.message || "Failed to cancel order", "error");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const resetOrderForm = () => {
@@ -124,67 +172,105 @@ export default function RetailerHome() {
         setStats((prev) => ({
           ...(prev || {}),
           totalOrders: (prev?.totalOrders || 0) + 1,
-          pendingOrders: (prev?.pendingOrders || 0) + (createdOrder.status === "Pending" ? 1 : 0),
+          pendingOrders: (prev?.pendingOrders || 0) + (createdOrder.status === "pending" ? 1 : 0),
         }));
+        showNotification("Order created successfully!", "success");
       }
 
       setLastUpdate(new Date());
       setIsOrderModalOpen(false);
       resetOrderForm();
     } catch (error) {
-      console.error("Failed to create retailer order:", error);
+      showNotification(error.message || "Failed to create order", "error");
     }
   };
 
   const fetchData = React.useCallback(async () => {
     try {
       setPageLoading(true);
-      // Use mock data for now since retailer endpoints are not yet available
-      setOrders(mockOrders);
+      const response = await request("GET", "/api/users/retailer/orders?limit=50");
+      
+      // Extract orders - check different possible response structures
+      let fetchedOrders = [];
+      if (response?.data?.orders) {
+        fetchedOrders = response.data.orders;
+      } else if (response?.orders) {
+        fetchedOrders = response.orders;
+      } else if (Array.isArray(response)) {
+        fetchedOrders = response;
+      }
+      
+      if (!Array.isArray(fetchedOrders)) {
+        fetchedOrders = [];
+      }
+      
+      // Normalize status to title case for display
+      const normalizedOrders = fetchedOrders.map((order, idx) => ({
+        ...order,
+        _id: order._id || `temp-${idx}`,
+        status: (order.status || "pending").charAt(0).toUpperCase() + (order.status || "pending").slice(1),
+        orderNumber: order.orderNumber || `ORD-${order._id?.substring(0, 8)}`,
+        purchaseOrderNumber: order.purchaseOrderNumber || "N/A",
+        totalAmount: order.totalAmount || 0,
+        date: order.createdAt || order.date || new Date().toISOString(),
+      }));
+      
+      setOrders(normalizedOrders);
       setShipments(mockShipments);
       setStats({
-        totalOrders: mockOrders.length,
-        pendingOrders: mockOrders.filter(o => o.status === "Pending").length,
+        totalOrders: normalizedOrders.length,
+        pendingOrders: normalizedOrders.filter(o => o.status.toLowerCase() === "pending").length,
       });
       setLastUpdate(new Date());
     } catch (err) {
-      console.error("Error fetching retailer dashboard data:", err);
+      console.error("Error fetching retailer orders:", err);
+      setOrders([]);
+      setStats({ totalOrders: 0, pendingOrders: 0 });
     } finally {
       setPageLoading(false);
     }
-  }, []);
+  }, [request]);
 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const filteredOrders = React.useMemo(() => {
-    let filtered = orders;
+    try {
+      let filtered = Array.isArray(orders) ? orders : [];
 
-    if (statusFilter !== "All") {
-      filtered = filtered.filter((order) => order.status === statusFilter);
+      if (statusFilter !== "All" && statusFilter) {
+        filtered = filtered.filter((order) => {
+          const orderStatus = String(order?.status || "").toLowerCase();
+          const filterStatus = String(statusFilter || "").toLowerCase();
+          return orderStatus === filterStatus;
+        });
+      }
+
+      const query = searchText.trim().toLowerCase();
+      if (query) {
+        filtered = filtered.filter((order) =>
+          [order.orderNumber, order.purchaseOrderNumber].some((value) =>
+            String(value || "").toLowerCase().includes(query)
+          )
+        );
+      }
+
+      return filtered;
+    } catch (err) {
+      console.error("Error filtering orders:", err);
+      return [];
     }
-
-    const query = searchText.trim().toLowerCase();
-    if (query) {
-      filtered = filtered.filter((order) =>
-        [order.orderNumber, order.purchaseOrderNumber].some((value) =>
-          String(value || "").toLowerCase().includes(query)
-        )
-      );
-    }
-
-    return filtered;
   }, [orders, searchText, statusFilter]);
 
   const visibleOrders = showAllOrders ? filteredOrders : filteredOrders.slice(0, 5);
 
   const orderStats = React.useMemo(() => {
     const total = orders.length;
-    const pending = orders.filter((o) => o.status === "Pending").length;
-    const shipped = orders.filter((o) => o.status === "Shipped").length;
-    const delivered = orders.filter((o) => o.status === "Delivered").length;
-    const cancelled = orders.filter((o) => o.status === "Cancelled").length;
+    const pending = orders.filter((o) => o.status.toLowerCase() === "pending").length;
+    const shipped = orders.filter((o) => o.status.toLowerCase() === "shipped").length;
+    const delivered = orders.filter((o) => o.status.toLowerCase() === "delivered").length;
+    const cancelled = orders.filter((o) => o.status.toLowerCase() === "cancelled").length;
 
     return { total, pending, shipped, delivered, cancelled };
   }, [orders]);
@@ -252,6 +338,23 @@ export default function RetailerHome() {
       <style>{dropdownStyles}</style>
       <div className="min-h-screen p-6 md:p-8 bg-gradient-to-br from-slate-950 via-[#0b1732] to-[#070d1f] text-white">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Notification Toast */}
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`fixed top-4 right-4 p-4 rounded-lg border backdrop-blur-xl z-50 ${
+                notification.type === "success"
+                  ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-100"
+                  : "bg-red-500/20 border-red-500/50 text-red-100"
+              }`}
+            >
+              {notification.message}
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -18 }}
@@ -425,44 +528,86 @@ export default function RetailerHome() {
 
             {/* Orders Table */}
             <div className="space-y-2">
-              {pageLoading ? (
+              {pageLoading && (!visibleOrders || visibleOrders.length === 0) ? (
                 <div className="py-8 text-center text-white/40">Loading orders...</div>
-              ) : visibleOrders.length === 0 ? (
-                <div className="py-8 text-center text-white/40">No orders found</div>
+              ) : !visibleOrders || visibleOrders.length === 0 ? (
+                <div className="py-8 text-center text-white/40">
+                  {orders.length === 0 ? "No orders found" : `No orders match "${statusFilter}"`}
+                </div>
               ) : (
-                visibleOrders.map((order, idx) => (
-                  <motion.div
-                    key={order._id || idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    whileHover={{ x: 4 }}
-                    className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all group cursor-pointer"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold text-white">{order.orderNumber}</p>
-                      <p className="text-sm text-white/60">{order.purchaseOrderNumber}</p>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-4">
-                      <div>
-                        <p className="text-sm text-white/80 font-medium">
-                          {order.totalAmount ? `₹${order.totalAmount.toFixed(2)}` : "N/A"}
-                        </p>
-                      </div>
-                      <div
-                        className={`px-3 py-1 rounded-full border text-xs font-semibold ${
-                          statusColors[order.status] ||
-                          statusColors["Pending"]
-                        }`}
+                visibleOrders.map((order, idx) => {
+                  try {
+                    const orderNum = order?.orderNumber || order?.purchaseOrderNumber || `ORD-${idx}`;
+                    const orderDate = new Date(order?.date || order?.createdAt || new Date()).toLocaleDateString();
+                    const orderAmount = order?.totalAmount ? `₹${Number(order.totalAmount).toFixed(2)}` : "N/A";
+                    const orderStatus = String(order?.status || "pending").charAt(0).toUpperCase() + String(order?.status || "pending").slice(1);
+                    const orderId = order?._id || `temp-${idx}`;
+                    
+                    return (
+                      <motion.div
+                        key={orderId}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        whileHover={{ x: 4 }}
+                        className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all group cursor-pointer"
                       >
-                        {order.status}
+                        <div className="flex-1">
+                          <p className="font-semibold text-white">{orderNum}</p>
+                          <p className="text-sm text-white/60">{orderDate}</p>
+                        </div>
+                        <div className="hidden sm:flex items-center gap-4">
+                          <div>
+                            <p className="text-sm text-white/80 font-medium">{orderAmount}</p>
+                          </div>
+                          <div
+                            className={`px-3 py-1 rounded-full border text-xs font-semibold ${
+                              statusColors[orderStatus] || statusColors["Pending"]
+                            }`}
+                          >
+                            {orderStatus}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {["pending", "cancelled"].includes(orderStatus.toLowerCase()) && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleDeleteOrder(orderId)}
+                              disabled={actionLoading === orderId}
+                              className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 transition-colors disabled:opacity-50"
+                              title="Delete order"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </motion.button>
+                          )}
+                          {!["completed", "cancelled", "delivered"].includes(orderStatus.toLowerCase()) && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setCancelReasonModal({ show: true, orderId })}
+                              disabled={actionLoading === orderId}
+                              className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition-colors disabled:opacity-50"
+                              title="Cancel order"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </motion.button>
+                          )}
+                          <button className="p-2 rounded-lg bg-white/0 hover:bg-white/10 transition-colors">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  } catch (renderErr) {
+                    console.error("❌ Error rendering order:", renderErr, order);
+                    return (
+                      <div key={`error-${idx}`} className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300">
+                        Error rendering order - check console
                       </div>
-                    </div>
-                    <button className="p-2 rounded-lg bg-white/0 hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </motion.div>
-                ))
+                    );
+                  }
+                })
               )}
             </div>
 
@@ -550,6 +695,80 @@ export default function RetailerHome() {
           </motion.div>
         </div>
 
+        {/* Last Updated */}
+        <div className="text-center text-white/40 text-xs">
+          Last updated: {lastUpdate.toLocaleTimeString()}
+        </div>
+
+        {/* Cancel Order Modal */}
+        <AnimatePresence>
+          {cancelReasonModal.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            >
+              <motion.form
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleCancelOrder();
+                }}
+                className="w-full max-w-lg space-y-4 rounded-2xl border border-white/10 bg-slate-900 p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Cancel Order</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCancelReasonModal({ show: false, orderId: null });
+                      setCancelReason("");
+                    }}
+                    className="rounded-lg p-2 hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Cancellation Reason (Optional)</label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    rows="4"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-white placeholder-white/40"
+                    placeholder="Why are you cancelling this order?"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCancelReasonModal({ show: false, orderId: null });
+                      setCancelReason("");
+                    }}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 hover:bg-white/10"
+                  >
+                    Keep Order
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading === cancelReasonModal.orderId}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2.5 font-semibold hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+                  >
+                    {actionLoading === cancelReasonModal.orderId ? "Cancelling..." : "Confirm Cancel"}
+                  </button>
+                </div>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Create Order Modal */}
         <AnimatePresence>
           {isOrderModalOpen && (
             <motion.div
@@ -667,11 +886,6 @@ export default function RetailerHome() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Last Updated */}
-        <div className="text-center text-white/40 text-xs">
-          Last updated: {lastUpdate.toLocaleTimeString()}
-        </div>
       </div>
       </div>
     </>

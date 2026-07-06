@@ -14,6 +14,12 @@ import {
   Boxes,
   ShieldAlert,
   LogOut,
+  ShoppingCart,
+  CheckCircle,
+  Play,
+  AlertCircle,
+  Edit,
+  X,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
 
@@ -26,12 +32,111 @@ export default function Dashboard() {
   const [searchText, setSearchText] = React.useState("");
   const [showAlerts, setShowAlerts] = React.useState(false);
   const [lastUpdate, setLastUpdate] = React.useState(new Date());
+  const [notification, setNotification] = React.useState(null);
+  const [actionLoading, setActionLoading] = React.useState(null);
+  const [escalateModal, setEscalateModal] = React.useState({ show: false, order: null });
+  const [escalateReason, setEscalateReason] = React.useState("");
+  const [adjustInventoryModal, setAdjustInventoryModal] = React.useState({ show: false, item: null });
+  const [adjustmentQty, setAdjustmentQty] = React.useState("");
+  const [adjustmentReason, setAdjustmentReason] = React.useState("");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const showNotification = (message, type = "success") => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleCreatePurchaseOrder = (lowStockItem) => {
+    // This would typically navigate to a form or open a modal to create a PO
+    showNotification(`Purchase order creation for ${lowStockItem.drugId?.name} initiated`, "success");
+    console.log("Create PO for:", lowStockItem);
+  };
+
+  const handleAcknowledgeShortage = (orderId) => {
+    // Mark shortage as acknowledged
+    setAlerts((prev) => ({
+      ...prev,
+      incomingOrders: prev.incomingOrders.map((order) =>
+        order._id === orderId ? { ...order, acknowledged: true } : order
+      ),
+    }));
+    showNotification("Shortage acknowledged. Notifying retailers.", "success");
+  };
+
+  const handlePrepareDispatch = (orderId) => {
+    // Mark order as ready for dispatch
+    setAlerts((prev) => ({
+      ...prev,
+      incomingOrders: prev.incomingOrders.map((order) =>
+        order._id === orderId ? { ...order, status: "prepared" } : order
+      ),
+    }));
+    showNotification("Order marked as ready for dispatch", "success");
+  };
+
+  const handleAllocateBLE = (orderId) => {
+    // Simulate BLE allocation
+    showNotification("BLE package allocated and registered", "success");
+    console.log("Allocate BLE for order:", orderId);
+  };
+
+  const handleEscalateShortage = async () => {
+    const order = escalateModal.order;
+    if (!order) return;
+
+    try {
+      setActionLoading(`escalate-${order._id}`);
+      // Simulate escalation to admin
+      showNotification(`Shortage escalated to admin for ${order.medicine}`, "success");
+      
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((o) =>
+          o._id === order._id ? { ...o, escalatedToAdmin: true } : o
+        ),
+      }));
+      
+      setEscalateModal({ show: false, order: null });
+      setEscalateReason("");
+    } catch (error) {
+      showNotification(error.message || "Failed to escalate shortage", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleManualAdjustInventory = async () => {
+    const item = adjustInventoryModal.item;
+    if (!item || !adjustmentQty) return;
+
+    try {
+      setActionLoading(`adjust-${item._id}`);
+      const newQty = Number(item.quantity) + Number(adjustmentQty);
+      
+      // Simulate inventory adjustment
+      showNotification(`Inventory adjusted for ${item.drugId?.name}: +${adjustmentQty} units`, "success");
+      
+      setAlerts((prev) => ({
+        ...prev,
+        lowStockAlerts: prev.lowStockAlerts.map((i) =>
+          i._id === item._id ? { ...i, quantity: newQty } : i
+        ),
+      }));
+      
+      setAdjustInventoryModal({ show: false, item: null });
+      setAdjustmentQty("");
+      setAdjustmentReason("");
+    } catch (error) {
+      showNotification(error.message || "Failed to adjust inventory", "error");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleRefresh = React.useCallback(async () => {
@@ -143,6 +248,23 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen p-6 md:p-8 bg-gradient-to-br from-slate-950 via-[#0b1732] to-[#070d1f] text-white">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Notification Toast */}
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`fixed top-4 right-4 p-4 rounded-lg border backdrop-blur-xl z-50 ${
+                notification.type === "success"
+                  ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-100"
+                  : "bg-red-500/20 border-red-500/50 text-red-100"
+              }`}
+            >
+              {notification.message}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <motion.div
           initial={{ opacity: 0, y: -18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -362,11 +484,37 @@ export default function Dashboard() {
                     transition={{ delay: 0.42 + index * 0.04 }}
                     className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20"
                   >
-                    <p className="font-semibold text-amber-200">{item.drugId?.name || "Unknown"}</p>
-                    <p className="text-sm text-amber-100/80 mt-1">
-                      Current: {item.quantity ?? "N/A"} • Threshold: {item.threshold ?? "N/A"}
-                    </p>
-                    <p className="text-xs text-amber-100/60 mt-1">Location: {item.warehouseLocation || "N/A"}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-amber-200">{item.drugId?.name || "Unknown"}</p>
+                        <p className="text-sm text-amber-100/80 mt-1">
+                          Current: {item.quantity ?? "N/A"} • Threshold: {item.threshold ?? "N/A"}
+                        </p>
+                        <p className="text-xs text-amber-100/60 mt-1">Location: {item.warehouseLocation || "N/A"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCreatePurchaseOrder(item)}
+                        disabled={actionLoading === `po-${item._id}`}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-amber-500/30 hover:bg-amber-500/50 text-amber-200 font-semibold transition-colors disabled:opacity-50"
+                        title="Create Purchase Order"
+                      >
+                        <ShoppingCart className="w-3 h-3" />
+                        Create PO
+                      </motion.button>                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setAdjustInventoryModal({ show: true, item })}
+                        disabled={actionLoading === `adjust-${item._id}`}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-cyan-500/30 hover:bg-cyan-500/50 text-cyan-200 font-semibold transition-colors disabled:opacity-50"
+                        title="Manually adjust inventory"
+                      >
+                        <Edit className="w-3 h-3" />
+                        Adjust Stock
+                      </motion.button>                    </div>
                   </motion.div>
                 ))
               ) : (
@@ -409,7 +557,63 @@ export default function Dashboard() {
                         {order.inventoryAvailable ? "Stock Available" : "Stock Shortage"}
                       </span>
                     </div>
-                    <p className="text-xs text-white/60 mt-3">{order.warehouseAction}</p>
+                    <p className="text-xs text-white/60 mt-2">{order.warehouseAction || "Processing..."}</p>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                      {!order.inventoryAvailable && (
+                        <>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleAcknowledgeShortage(order._id)}
+                            disabled={actionLoading === `ack-${order._id}` || order.acknowledged}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-amber-500/30 hover:bg-amber-500/50 text-amber-200 font-semibold transition-colors disabled:opacity-50"
+                            title="Acknowledge shortage and notify retailers"
+                          >
+                            <AlertCircle className="w-3 h-3" />
+                            {order.acknowledged ? "Acknowledged" : "Acknowledge"}
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setEscalateModal({ show: true, order })}
+                            disabled={actionLoading === `escalate-${order._id}` || order.escalatedToAdmin}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-200 font-semibold transition-colors disabled:opacity-50"
+                            title="Escalate shortage to admin for decision"
+                          >
+                            <AlertCircle className="w-3 h-3" />
+                            {order.escalatedToAdmin ? "Escalated" : "Escalate"}
+                          </motion.button>
+                        </>
+                      )}
+                      {order.inventoryAvailable && (
+                        <>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleAllocateBLE(order._id)}
+                            disabled={actionLoading === `ble-${order._id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-cyan-500/30 hover:bg-cyan-500/50 text-cyan-200 font-semibold transition-colors disabled:opacity-50"
+                            title="Allocate BLE package"
+                          >
+                            <Package className="w-3 h-3" />
+                            Allocate BLE
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handlePrepareDispatch(order._id)}
+                            disabled={actionLoading === `dispatch-${order._id}` || order.status === "prepared"}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
+                            title="Mark order as ready for dispatch"
+                          >
+                            <Play className="w-3 h-3" />
+                            {order.status === "prepared" ? "Ready" : "Prepare"}
+                          </motion.button>
+                        </>
+                      )}
+                    </div>
                   </motion.div>
                 ))
               ) : (
@@ -418,6 +622,176 @@ export default function Dashboard() {
             </div>
           </motion.div>
         </div>
+
+        {/* Escalate Shortage Modal */}
+        <AnimatePresence>
+          {escalateModal.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            >
+              <motion.form
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleEscalateShortage();
+                }}
+                className="w-full max-w-lg space-y-4 rounded-2xl border border-white/10 bg-slate-900 p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Escalate Shortage</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEscalateModal({ show: false, order: null });
+                      setEscalateReason("");
+                    }}
+                    className="rounded-lg p-2 hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div>
+                  <p className="text-sm text-white/70 mb-3">
+                    <strong>Order:</strong> {escalateModal.order?.medicine} ({escalateModal.order?.quantity} units)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Escalation Reason</label>
+                  <textarea
+                    value={escalateReason}
+                    onChange={(e) => setEscalateReason(e.target.value)}
+                    rows="3"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/30 text-white placeholder-white/40"
+                    placeholder="Provide details for admin decision (e.g., supplier delays, critical shortage)..."
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEscalateModal({ show: false, order: null });
+                      setEscalateReason("");
+                    }}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading?.includes("escalate")}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 px-4 py-2.5 font-semibold hover:from-red-500 hover:to-rose-500 disabled:opacity-50"
+                  >
+                    {actionLoading?.includes("escalate") ? "Escalating..." : "Escalate to Admin"}
+                  </button>
+                </div>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Adjust Inventory Modal */}
+        <AnimatePresence>
+          {adjustInventoryModal.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            >
+              <motion.form
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleManualAdjustInventory();
+                }}
+                className="w-full max-w-lg space-y-4 rounded-2xl border border-white/10 bg-slate-900 p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Adjust Inventory</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdjustInventoryModal({ show: false, item: null });
+                      setAdjustmentQty("");
+                      setAdjustmentReason("");
+                    }}
+                    className="rounded-lg p-2 hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-2 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-sm text-white/70">
+                    <strong>Drug:</strong> {adjustInventoryModal.item?.drugId?.name}
+                  </p>
+                  <p className="text-sm text-white/70">
+                    <strong>Current Stock:</strong> {adjustInventoryModal.item?.quantity ?? 0} units
+                  </p>
+                  <p className="text-sm text-white/70">
+                    <strong>Threshold:</strong> {adjustInventoryModal.item?.threshold ?? 0} units
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Quantity to Add/Remove</label>
+                  <input
+                    type="number"
+                    value={adjustmentQty}
+                    onChange={(e) => setAdjustmentQty(e.target.value)}
+                    placeholder="Enter positive to add, negative to remove"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white placeholder-white/40"
+                  />
+                  <p className="text-xs text-white/50 mt-1">
+                    New stock will be: {(Number(adjustInventoryModal.item?.quantity || 0) + Number(adjustmentQty || 0))} units
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Reason (Optional)</label>
+                  <textarea
+                    value={adjustmentReason}
+                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                    rows="2"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white placeholder-white/40"
+                    placeholder="Why are you adjusting stock? (e.g., physical count, damage, correction)"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdjustInventoryModal({ show: false, item: null });
+                      setAdjustmentQty("");
+                      setAdjustmentReason("");
+                    }}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading?.includes("adjust") || !adjustmentQty}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2.5 font-semibold hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50"
+                  >
+                    {actionLoading?.includes("adjust") ? "Adjusting..." : "Confirm Adjustment"}
+                  </button>
+                </div>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
