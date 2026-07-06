@@ -112,6 +112,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { initializeEmailService } from "./src/services/email.service.js";
 
 dotenv.config();
 
@@ -123,10 +124,19 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// CORS
+// CORS - allow common dev ports (5173 used by Vite)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5174",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS blocked: ${origin}`));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
@@ -139,45 +149,53 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
+// Initialize email service (so notification emails can be sent)
+try {
+  initializeEmailService();
+  console.log("✅ Email service initialized");
+} catch (e) {
+  console.warn("⚠️ Email service initialization failed:", e.message);
+}
+
 // ============= ROUTES =============
 
 // Auth routes
-import authRoutes from "./routes/auth.routes.js";
+import authRoutes from "./src/routes/auth.routes.js";
 app.use("/api/auth", authRoutes);
 console.log("✅ Auth routes loaded");
 
 // User routes
-import userRoutes from "./routes/user.routes.js";
+import userRoutes from "./src/routes/user.routes.js";
 app.use("/api/users", userRoutes);
 console.log("✅ User routes loaded");
 
 // Admin Dashboard routes
-import dashboardRoutes from "./routes/admin/dashboard.routes.js";
+import dashboardRoutes from "./src/routes/admin/dashboard.routes.js";
 app.use("/api/admin/dashboard", dashboardRoutes);
 console.log("✅ Dashboard routes loaded");
 
 // Admin Drugs routes
-import drugsRoutes from "./routes/admin/drugs.routes.js";
+import drugsRoutes from "./src/routes/admin/drugs.routes.js";
 app.use("/api/admin/drugs", drugsRoutes);
 console.log("✅ Drugs routes loaded");
 
 // Admin Inventory routes
-import inventoryRoutes from "./routes/admin/inventory.routes.js";
+import inventoryRoutes from "./src/routes/admin/inventory.routes.js";
 app.use("/api/admin/inventory", inventoryRoutes);
 console.log("✅ Inventory routes loaded");
 
 // Admin Suppliers routes (ADDED)
-import supplierRoutes from "./routes/admin/suppliers.routes.js";
+import supplierRoutes from "./src/routes/admin/suppliers.routes.js";
 app.use("/api/admin/suppliers", supplierRoutes);
 console.log("✅ Suppliers routes loaded");
 
 // Admin Shipments routes (ADDED)
-import shipmentRoutes from "./routes/admin/shipments.routes.js";
+import shipmentRoutes from "./src/routes/admin/shipments.routes.js";
 app.use("/api/admin/shipments", shipmentRoutes);
 console.log("✅ Shipments routes loaded");
 
 // Admin Orders routes (ADDED)
-import orderRoutes from "./routes/admin/orders.routes.js";
+import orderRoutes from "./src/routes/admin/orders.routes.js";
 app.use("/api/admin/orders", orderRoutes);
 console.log("✅ Orders routes loaded");
 

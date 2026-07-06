@@ -1,6 +1,8 @@
 import OrderModel from '../models/OrderModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import DrugModel from '../models/Drug.js';
+import UserModel from '../models/UserModel.js';
+import { sendOrderWorkflowNotification } from '../services/notification.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { validateArray, validateRequired } from '../utils/validation.js';
 
@@ -206,11 +208,70 @@ const updateOrderStatus = async (req, res) => {
       { path: 'supplier', select: 'name email' },
       { path: 'approvedBy', select: 'name email' }
     ]);
+
+    // Send email + push notifications for key status changes (retailer)
+    try {
+      const retailer = await UserModel.findById(order.createdBy).select('email name');
+      const recipientEmail = retailer?.email;
+      if (recipientEmail && ['confirmed', 'shipped', 'delivered'].includes(status)) {
+        const item = order.items?.[0] || {};
+        await sendOrderWorkflowNotification({
+          recipientEmail,
+          orderNumber: order.orderNumber,
+          medicine: item.drug?.name || item.drug || 'Item',
+          quantity: item.quantity || 0,
+          totalAmount: order.totalAmount || 0,
+          status: status.toUpperCase(),
+          nextStep: status === 'confirmed' ? 'Warehouse will prepare and dispatch the order.' : (status === 'shipped' ? 'Order is on the way.' : 'Order has been delivered.')
+        });
+      }
+    } catch (e) {
+      console.error('Notification error:', e);
+    }
     
     return successResponse(res, 200, 'Order status updated successfully', order);
   } catch (error) {
     console.error('Update order status error:', error);
     return errorResponse(res, 500, 'Failed to update order status', error.message);
+  }
+};
+
+// Escalate an order to admin (called by warehouse UI)
+const escalateOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const order = await OrderModel.findById(id).populate([ { path: 'items.drug', select: 'name' }, { path: 'createdBy', select: 'name email' } ]);
+    if (!order) {
+      return errorResponse(res, 404, 'Order not found');
+    }
+
+    order.escalatedToAdmin = true;
+    order.statusHistory.push({ status: 'escalated', timestamp: new Date(), updatedBy: req.user._id, notes: reason || 'Escalated by warehouse' });
+    await order.save();
+
+    // Notify admins
+    const admins = await UserModel.find({ role: { $in: ['ADMIN'] } }).select('email name');
+    const item = order.items?.[0] || {};
+    const tasks = admins
+      .filter(a => a.email)
+      .map(a => sendOrderWorkflowNotification({
+        recipientEmail: a.email,
+        orderNumber: order.orderNumber,
+        medicine: item.drug?.name || 'Item',
+        quantity: item.quantity || 0,
+        totalAmount: order.totalAmount || 0,
+        status: 'ESCALATED',
+        nextStep: 'Please review and advise on shortage/exception.'
+      }));
+
+    await Promise.allSettled(tasks);
+
+    return successResponse(res, 200, 'Order escalated to admin', order);
+  } catch (error) {
+    console.error('Escalate order error:', error);
+    return errorResponse(res, 500, 'Failed to escalate order', error.message);
   }
 };
 
@@ -328,4 +389,5 @@ export default {
   deleteOrder,
   cancelOrder,
   getOrderStats
+  ,escalateOrder
 };

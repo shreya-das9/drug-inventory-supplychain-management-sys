@@ -130,6 +130,7 @@ export const getAlerts = async (req, res) => {
           warehouseAction: inventoryAvailable
             ? "Confirm order and allocate BLE smart package"
             : "Notify retailer and admin of stock shortage",
+          escalatedToAdmin: Boolean(order.escalatedToAdmin),
           createdAt: order.createdAt,
           createdBy: order.createdBy,
         };

@@ -92,16 +92,17 @@ export default function Dashboard() {
 
     try {
       setActionLoading(`escalate-${order._id}`);
-      // Simulate escalation to admin
+      await request('POST', `/api/admin/dashboard/alerts/${order._id}/escalate`, { reason: escalateReason });
+
       showNotification(`Shortage escalated to admin for ${order.medicine}`, "success");
-      
+      // update local alerts state
       setAlerts((prev) => ({
         ...prev,
         incomingOrders: prev.incomingOrders.map((o) =>
           o._id === order._id ? { ...o, escalatedToAdmin: true } : o
         ),
       }));
-      
+
       setEscalateModal({ show: false, order: null });
       setEscalateReason("");
     } catch (error) {

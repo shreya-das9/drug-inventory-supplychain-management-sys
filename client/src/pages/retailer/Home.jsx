@@ -217,6 +217,7 @@ export default function RetailerHome() {
       
       setOrders(normalizedOrders);
       setShipments(mockShipments);
+      setShipments(mockShipments);
       setStats({
         totalOrders: normalizedOrders.length,
         pendingOrders: normalizedOrders.filter(o => o.status.toLowerCase() === "pending").length,
@@ -234,6 +235,47 @@ export default function RetailerHome() {
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Poll for order updates and show lightweight toasts for important status changes
+  const prevOrdersRef = React.useRef(new Map());
+  React.useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await request('GET', '/api/users/retailer/orders?limit=50');
+        let fetchedOrders = [];
+        if (response?.data?.orders) fetchedOrders = response.data.orders;
+        else if (Array.isArray(response)) fetchedOrders = response;
+
+        const normalized = (fetchedOrders || []).map(o => ({
+          _id: o._id,
+          status: (o.status || 'pending').toLowerCase(),
+          orderNumber: o.orderNumber || `ORD-${o._id?.slice(0,8)}`
+        }));
+
+        normalized.forEach(o => {
+          const prev = prevOrdersRef.current.get(o._id);
+          if (!prev) {
+            prevOrdersRef.current.set(o._id, o.status);
+            return;
+          }
+          if (prev !== o.status) {
+            // show notifications for key transitions
+            const keyStatuses = ['confirmed', 'shipped', 'delivered', 'cancelled'];
+            if (keyStatuses.includes(o.status)) {
+              showNotification(`Order ${o.orderNumber} is now ${o.status}`, 'success');
+            }
+            prevOrdersRef.current.set(o._id, o.status);
+          }
+        });
+      } catch (e) {
+        // ignore polling errors
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [request]);
+
+  
 
   const filteredOrders = React.useMemo(() => {
     try {

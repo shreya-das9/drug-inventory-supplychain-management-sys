@@ -23,8 +23,8 @@ router.get('/:id', shipmentController.getShipmentById);
 // POST /api/admin/shipments - Create new shipment
 router.post('/', shipmentController.createShipment);
 
-// PUT /api/admin/shipments/:id - Update shipment
-router.put('/:id', shipmentController.updateShipment);
+// PUT /api/admin/shipments/:id - Update shipment (alias to updateShipmentStatus)
+router.put('/:id', shipmentController.updateShipmentStatus);
 
 // PATCH /api/admin/shipments/:id/status - Update shipment status
 router.patch('/:id/status', shipmentController.updateShipmentStatus);

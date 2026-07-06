@@ -19,5 +19,10 @@ const router = express.Router();
 router.get("/stats", verifyToken, isWarehouseAdmin, getStats);
 router.get("/alerts", verifyToken, isWarehouseAdmin, getAlerts);
 router.post("/alerts/:id/resolve", verifyToken, isWarehouseAdmin, resolveAlert);
+router.post("/alerts/:id/escalate", verifyToken, isWarehouseAdmin, (req, res, next) => {
+	// Lazy import to avoid circular dependency issues
+	import("../../controllers/orders.controller.js").then(mod => mod.escalateOrder(req, res, next)).catch(next);
+});
+// escalate endpoint removed — use UI-level simulation only
 
 export default router;
