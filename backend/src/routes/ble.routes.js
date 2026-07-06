@@ -14,7 +14,8 @@ import {
   updateTamper,
   verifyChallengeScan
 } from "../controllers/ble.controller.js";
-import { isAdmin, isWarehouseAdmin, verifyToken } from "../middleware/auth.middleware.js";
+import { ingestBleScan } from "../controllers/bleScan.controller.js";
+import { isAdmin, isWarehouseAdmin, verifyToken, verifyBleIngestionToken } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
@@ -31,6 +32,8 @@ router.patch("/secure/registry/:bleId/tamper", verifyToken, isAdmin, updateTampe
 router.post("/secure/challenge", verifyToken, isWarehouseAdmin, createChallenge);
 router.post("/secure/mock-sign", verifyToken, isWarehouseAdmin, signChallengeMock);
 router.post("/secure/verify", verifyToken, isWarehouseAdmin, verifyChallengeScan);
+router.post("/scan", verifyBleIngestionToken, ingestBleScan);
+router.post("/scan/ingest", verifyToken, isWarehouseAdmin, ingestBleScan);
 router.get("/secure/logs", verifyToken, isWarehouseAdmin, getSecurityLogs);
 
 export default router;

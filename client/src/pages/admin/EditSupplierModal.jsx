@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../services/api";
 
 export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -91,16 +91,7 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
       setLoading(true);
       const token = localStorage.getItem("token");
       
-      await axios.put(
-        `http://localhost:5000/api/admin/suppliers/${supplier._id}`,
-        formData,
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      await api.put(`/admin/suppliers/${supplier._id}`, formData);
 
       if (onSuccess) {
         onSuccess();

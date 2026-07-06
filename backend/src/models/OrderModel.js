@@ -81,6 +81,12 @@ const orderSchema = new mongoose.Schema({
     country: { type: String, default: 'India' },
     phone: String
   },
+  bleId: {
+    type: String,
+    uppercase: true,
+    trim: true,
+    default: null
+  },
   deliveredAt: Date,
   cancellationReason: String,
   statusHistory: [{

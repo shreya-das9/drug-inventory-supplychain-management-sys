@@ -13,7 +13,7 @@ import {
    TrendingUp,
   ArrowUpRight
 } from "lucide-react";
-import axios from "axios";
+import api from "../../services/api";
 import AddOrderModal from "./AddOrderModal";
 import OrderDetailsModal from "./OrderDetailsModal";
 
@@ -72,15 +72,11 @@ export default function Orders() {
         params.set("search", debouncedSearchQuery);
       }
 
-      const url = `http://localhost:5000/api/admin/orders?${params.toString()}`;
+      const url = `/admin/orders?${params.toString()}`;
       
       const [ordersResponse, statsResponse] = await Promise.all([
-        axios.get(url, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get("http://localhost:5000/api/admin/orders/stats", {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        api.get(url),
+        api.get("/admin/orders/stats")
       ]);
       
       // CRITICAL FIX: Handle different response shapes coming from backend
@@ -201,14 +197,7 @@ export default function Orders() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(
-        `http://localhost:5000/api/admin/orders/${order._id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
+      await api.delete(`/admin/orders/${order._id}`);
       setIsDetailsModalOpen(false);
       fetchOrders();
     } catch (error) {

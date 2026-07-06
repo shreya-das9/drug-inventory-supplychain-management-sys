@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
-import axios from "axios";
+import api from "../../services/api";
 
 export default function AddOrderModal({ isOpen, onClose, onSuccess }) {
   const [suppliers, setSuppliers] = useState([]);
@@ -22,9 +22,7 @@ export default function AddOrderModal({ isOpen, onClose, onSuccess }) {
   const fetchSuppliers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/suppliers", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get("/admin/suppliers");
 
       const payload = response.data;
       const supplierList = Array.isArray(payload)
@@ -46,9 +44,7 @@ export default function AddOrderModal({ isOpen, onClose, onSuccess }) {
   const fetchDrugs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/drugs", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get("/admin/drugs");
 
       const payload = response.data;
       const drugList = Array.isArray(payload)
@@ -108,11 +104,7 @@ export default function AddOrderModal({ isOpen, onClose, onSuccess }) {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        "http://localhost:5000/api/admin/orders",
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post("/admin/orders", formData);
       
       onSuccess();
       onClose();

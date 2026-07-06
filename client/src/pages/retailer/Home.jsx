@@ -91,8 +91,11 @@ export default function RetailerHome() {
   });
   const [notification, setNotification] = React.useState(null);
   const [actionLoading, setActionLoading] = React.useState(null);
+  const [shipmentActionLoading, setShipmentActionLoading] = React.useState(null);
   const [cancelReasonModal, setCancelReasonModal] = React.useState({ show: false, orderId: null });
   const [cancelReason, setCancelReason] = React.useState("");
+  const [quarantineModal, setQuarantineModal] = React.useState({ show: false, shipmentId: null });
+  const [quarantineReason, setQuarantineReason] = React.useState("");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -143,6 +146,49 @@ export default function RetailerHome() {
     }
   };
 
+  const handleConfirmShipment = async (shipmentId) => {
+    if (!window.confirm("Confirm final delivery for this shipment?")) return;
+
+    try {
+      setShipmentActionLoading(shipmentId);
+      await request("PATCH", `/api/users/retailer/shipments/${shipmentId}/confirm`);
+      setShipments((prev) =>
+        prev.map((s) =>
+          s._id === shipmentId ? { ...s, status: "Delivered" } : s
+        )
+      );
+      showNotification("Shipment confirmed as delivered", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to confirm shipment", "error");
+    } finally {
+      setShipmentActionLoading(null);
+    }
+  };
+
+  const handleQuarantineShipment = async () => {
+    const shipmentId = quarantineModal.shipmentId;
+    if (!shipmentId) return;
+
+    try {
+      setShipmentActionLoading(shipmentId);
+      await request("PATCH", `/api/users/retailer/shipments/${shipmentId}/quarantine`, {
+        reason: quarantineReason.trim(),
+      });
+      setShipments((prev) =>
+        prev.map((s) =>
+          s._id === shipmentId ? { ...s, status: "Quarantined" } : s
+        )
+      );
+      showNotification("Shipment quarantined successfully", "success");
+      setQuarantineModal({ show: false, shipmentId: null });
+      setQuarantineReason("");
+    } catch (error) {
+      showNotification(error.message || "Failed to quarantine shipment", "error");
+    } finally {
+      setShipmentActionLoading(null);
+    }
+  };
+
   const resetOrderForm = () => {
     setNewOrder({
       medicine: "",
@@ -189,6 +235,7 @@ export default function RetailerHome() {
     try {
       setPageLoading(true);
       const response = await request("GET", "/api/users/retailer/orders?limit=50");
+      const shipmentsResponse = await request("GET", "/api/users/retailer/shipments");
       
       // Extract orders - check different possible response structures
       let fetchedOrders = [];
@@ -203,6 +250,27 @@ export default function RetailerHome() {
       if (!Array.isArray(fetchedOrders)) {
         fetchedOrders = [];
       }
+
+      let fetchedShipments = [];
+      if (shipmentsResponse?.data?.shipments) {
+        fetchedShipments = shipmentsResponse.data.shipments;
+      } else if (shipmentsResponse?.shipments) {
+        fetchedShipments = shipmentsResponse.shipments;
+      } else if (Array.isArray(shipmentsResponse)) {
+        fetchedShipments = shipmentsResponse;
+      }
+
+      if (!Array.isArray(fetchedShipments)) {
+        fetchedShipments = [];
+      }
+
+      const normalizedShipments = fetchedShipments.map((shipment, idx) => ({
+        ...shipment,
+        _id: shipment._id || `temp-shipment-${idx}`,
+        trackingNumber: shipment.trackingNumber || shipment.order?.orderNumber || `SHP-${idx}`,
+        status: (shipment.status || "pending").charAt(0).toUpperCase() + (shipment.status || "pending").slice(1),
+        eta: shipment.expectedDeliveryDate ? new Date(shipment.expectedDeliveryDate).toLocaleDateString() : "TBD",
+      }));
       
       // Normalize status to title case for display
       const normalizedOrders = fetchedOrders.map((order, idx) => ({
@@ -216,8 +284,7 @@ export default function RetailerHome() {
       }));
       
       setOrders(normalizedOrders);
-      setShipments(mockShipments);
-      setShipments(mockShipments);
+      setShipments(normalizedShipments);
       setStats({
         totalOrders: normalizedOrders.length,
         pendingOrders: normalizedOrders.filter(o => o.status.toLowerCase() === "pending").length,
@@ -663,14 +730,75 @@ export default function RetailerHome() {
             )}
           </motion.div>
 
-          {/* Quick Stats Sidebar */}
+          {/* Shipment List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="lg:col-span-2 bg-gradient-to-br from-slate-900/40 to-slate-800/40 border border-white/10 rounded-2xl p-6 backdrop-blur-xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Truck className="w-5 h-5" />
+                Recent Shipments
+              </h2>
+            </div>
+
+            {shipments.length === 0 ? (
+              <div className="py-8 text-center text-white/40">No shipments found.</div>
+            ) : (
+              <div className="space-y-4">
+                {shipments.map((shipment, idx) => (
+                  <div key={shipment._id || idx} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm text-white/60">Tracking</p>
+                        <p className="font-semibold text-white">{shipment.trackingNumber}</p>
+                        <p className="text-sm text-white/50">ETA: {shipment.eta || "TBD"}</p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="px-3 py-1 rounded-full bg-slate-800 text-xs uppercase tracking-[0.12em] text-white/80">
+                          {shipment.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleConfirmShipment(shipment._id)}
+                          disabled={shipmentActionLoading === shipment._id || shipment.status === "Delivered" || shipment.status === "Quarantined"}
+                          className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Confirm Delivery
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQuarantineModal({ show: true, shipmentId: shipment._id })}
+                          disabled={shipmentActionLoading === shipment._id || shipment.status === "Delivered" || shipment.status === "Quarantined"}
+                          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Quarantine
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-white/70">
+                      <div>
+                        <p><span className="font-semibold text-white/80">Order</span>: {shipment.order?.orderNumber || "N/A"}</p>
+                        <p><span className="font-semibold text-white/80">Items</span>: {shipment.items?.length || 0}</p>
+                      </div>
+                      <div>
+                        <p><span className="font-semibold text-white/80">Value</span>: ₹{Number(shipment.totalAmount || 0).toFixed(2)}</p>
+                        <p><span className="font-semibold text-white/80">BLE ID</span>: {shipment.bleId || "Unavailable"}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="space-y-4"
+            className="lg:col-span-1 space-y-4"
           >
-            {/* Shipment Status */}
             <div className="bg-gradient-to-br from-slate-900/40 to-slate-800/40 border border-white/10 rounded-2xl p-6 backdrop-blur-xl">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Truck className="w-5 h-5" />
@@ -803,6 +931,74 @@ export default function RetailerHome() {
                     className="flex-1 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2.5 font-semibold hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
                   >
                     {actionLoading === cancelReasonModal.orderId ? "Cancelling..." : "Confirm Cancel"}
+                  </button>
+                </div>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Quarantine Shipment Modal */}
+        <AnimatePresence>
+          {quarantineModal.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            >
+              <motion.form
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleQuarantineShipment();
+                }}
+                className="w-full max-w-lg space-y-4 rounded-2xl border border-white/10 bg-slate-900 p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Quarantine Shipment</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuarantineModal({ show: false, shipmentId: null });
+                      setQuarantineReason("");
+                    }}
+                    className="rounded-lg p-2 hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-white/70">Quarantine Reason</label>
+                  <textarea
+                    value={quarantineReason}
+                    onChange={(e) => setQuarantineReason(e.target.value)}
+                    rows="4"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/30 text-white placeholder-white/40"
+                    placeholder="Explain why this shipment should be quarantined"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuarantineModal({ show: false, shipmentId: null });
+                      setQuarantineReason("");
+                    }}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={shipmentActionLoading === quarantineModal.shipmentId}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 px-4 py-2.5 font-semibold hover:from-red-500 hover:to-rose-500 disabled:opacity-50"
+                  >
+                    {shipmentActionLoading === quarantineModal.shipmentId ? "Quarantining..." : "Confirm Quarantine"}
                   </button>
                 </div>
               </motion.form>

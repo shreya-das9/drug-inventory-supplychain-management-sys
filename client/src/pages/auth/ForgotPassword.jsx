@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, ArrowLeft, Send, CheckCircle, Loader } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../../services/api";
 import logo from "../../assets/logo.png";
 
 export default function ForgotPassword() {
@@ -18,7 +18,7 @@ export default function ForgotPassword() {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/forgot-password", {
+      const response = await api.post("/auth/forgot-password", {
         email
       });
 

@@ -80,10 +80,76 @@ export default function Dashboard() {
     showNotification("Order marked as ready for dispatch", "success");
   };
 
-  const handleAllocateBLE = (orderId) => {
-    // Simulate BLE allocation
-    showNotification("BLE package allocated and registered", "success");
-    console.log("Allocate BLE for order:", orderId);
+  const handleAllocateBLE = async (orderId) => {
+    try {
+      setActionLoading(`ble-${orderId}`);
+      const response = await request("POST", "/api/admin/ble/allocate", { orderId });
+      const assignedBleId = response?.data?.bleId;
+
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((order) =>
+          order._id === orderId ? { ...order, bleId: assignedBleId } : order
+        )
+      }));
+
+      showNotification(`BLE package ${assignedBleId} assigned to order`, "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to allocate BLE package", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRunBleScan = async (order) => {
+    if (!order?.bleId) {
+      showNotification("Order does not have a BLE package assigned", "error");
+      return;
+    }
+
+    try {
+      setActionLoading(`ble-scan-${order._id}`);
+
+      const challengeResponse = await request("POST", "/api/ble/secure/challenge", { bleId: order.bleId });
+      const challenge = challengeResponse?.data?.challenge;
+
+      const signatureResponse = await request("POST", "/api/ble/secure/mock-sign", {
+        bleId: order.bleId,
+        challenge
+      });
+      const signature = signatureResponse?.data?.signature;
+
+      const ingestResponse = await request("POST", "/api/ble/scan/ingest", {
+        bleId: order.bleId,
+        challenge,
+        signature,
+        stage: "warehouse",
+        location: { city: "Warehouse" },
+        orderId: order._id
+      });
+
+      const verified = ingestResponse?.data?.verified;
+      const statusMessage = verified ? "BLE scan completed and verified" : "BLE scan completed with alerts";
+
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((o) =>
+          o._id === order._id
+            ? {
+                ...o,
+                status: verified ? "shipped" : o.status,
+                lastBleScanStatus: ingestResponse?.data?.verificationStatus
+              }
+            : o
+        )
+      }));
+
+      showNotification(statusMessage, verified ? "success" : "warning");
+    } catch (error) {
+      showNotification(error.message || "Failed to ingest BLE scan", "error");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleEscalateShortage = async () => {
@@ -601,6 +667,19 @@ export default function Dashboard() {
                             <Package className="w-3 h-3" />
                             Allocate BLE
                           </motion.button>
+                          {order.bleId && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleRunBleScan(order)}
+                              disabled={actionLoading === `ble-scan-${order._id}`}
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
+                              title="Run BLE scan ingestion"
+                            >
+                              <Truck className="w-3 h-3" />
+                              Run BLE Scan
+                            </motion.button>
+                          )}
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}

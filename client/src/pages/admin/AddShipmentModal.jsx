@@ -1,4 +1,5 @@
 import React from "react";
+import { API_BASE_URL } from "../../services/api";
 
 export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = React.useState(false);
@@ -35,7 +36,7 @@ export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
   const fetchSuppliers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/admin/suppliers", {
+      const response = await fetch(`${API_BASE_URL}/admin/suppliers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -56,7 +57,7 @@ export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
   const fetchDrugs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/admin/drugs", {
+      const response = await fetch(`${API_BASE_URL}/admin/drugs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -167,7 +168,7 @@ export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
         totalAmount
       };
 
-      const response = await fetch("http://localhost:5000/api/admin/shipments", {
+      const response = await fetch(`${API_BASE_URL}/admin/shipments`, {
         method: 'POST',
         headers: { 
           Authorization: `Bearer ${token}`,

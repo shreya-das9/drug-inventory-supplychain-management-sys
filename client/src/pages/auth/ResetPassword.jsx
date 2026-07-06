@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Lock, Eye, EyeOff, CheckCircle, Loader, ArrowLeft } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
+import api from "../../services/api";
 import logo from "../../assets/logo.png";
 
 export default function ResetPassword() {
@@ -40,7 +40,7 @@ export default function ResetPassword() {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/reset-password", {
+      const response = await api.post("/auth/reset-password", {
         token,
         newPassword: password
       });

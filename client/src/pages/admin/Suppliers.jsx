@@ -19,7 +19,7 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import axios from "axios";
+import api from "../../services/api";
 import AddSupplierModal from "./AddSupplierModal";
 import SupplierDetailsModal from "./SupplierDetailsModal";
 import EditSupplierModal from "./EditSupplierModal";
@@ -63,12 +63,10 @@ export default function Suppliers() {
       setLoading(true);
       const token = localStorage.getItem("token");
       const url = statusFilter === "all" 
-        ? "http://localhost:5000/api/admin/suppliers"
-        : `http://localhost:5000/api/admin/suppliers?status=${statusFilter}`;
+        ? "/admin/suppliers"
+        : `/admin/suppliers?status=${statusFilter}`;
       
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(url);
       
       const data = response.data;
       setSuppliers(data);
@@ -167,12 +165,7 @@ export default function Suppliers() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `http://localhost:5000/api/admin/suppliers/${supplier._id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await api.delete(`/admin/suppliers/${supplier._id}`);
       
       // Close modals and refresh
       setIsDetailsModalOpen(false);

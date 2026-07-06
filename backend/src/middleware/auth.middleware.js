@@ -28,6 +28,39 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
+// 🧾 BLE Ingestion Token or normal JWT auth
+export const verifyBleIngestionToken = (req, res, next) => {
+  const authHeader = req.headers.authorization || "";
+  const bearerToken = authHeader.split(" ")[1];
+  const staticToken = req.headers["x-ble-token"] || bearerToken;
+
+  if (staticToken && process.env.BLE_INGESTION_TOKEN && staticToken === process.env.BLE_INGESTION_TOKEN) {
+    req.user = { role: "BLE_DEVICE" };
+    return next();
+  }
+
+  if (!bearerToken) {
+    return res.status(401).json({
+      success: false,
+      message: "No token provided. Please login or provide the BLE ingestion token.",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(bearerToken, process.env.JWT_SECRET);
+    req.user = {
+      ...decoded,
+      _id: decoded._id || decoded.id
+    };
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
+  }
+};
+
 // 🏭 Warehouse Admin / Admin Access
 export const isWarehouseAdmin = (req, res, next) => {
   if (!req.user) {

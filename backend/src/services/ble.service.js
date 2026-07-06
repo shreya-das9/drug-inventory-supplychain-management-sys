@@ -693,8 +693,7 @@ export const verifySecureScan = async ({
 
 	return {
 		bleId: resolvedBleId,
-		verified: verificationStatus === "VERIFIED",
-		verificationStatus,
+    stage: resolvedStage,
 		alerts,
 		flow: flowResult,
 		geoTemporal: geoResult,

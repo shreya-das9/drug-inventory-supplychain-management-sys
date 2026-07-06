@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Loader2 } from "lucide-react";
 import { useState } from "react";
-import axios from "axios";
+import api from "../../services/api";
 
 export default function AddSupplierModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -69,16 +69,7 @@ export default function AddSupplierModal({ isOpen, onClose, onSuccess }) {
       setLoading(true);
       const token = localStorage.getItem("token");
       
-      await axios.post(
-        "http://localhost:5000/api/admin/suppliers",
-        formData,
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      await api.post("/admin/suppliers", formData);
 
       // Reset form
       setFormData({

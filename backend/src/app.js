@@ -16,18 +16,20 @@ const app = express();
 await connectDB();
 
 // Initialize Email Service
-initializeEmailService();
+if (process.env.NODE_ENV !== 'test') {
+  initializeEmailService();
+}
 
 // Initialize BLE Service
 const BLE_ENABLED = String(process.env.BLE_ENABLED ?? "true").toLowerCase() === "true";
 
-if (BLE_ENABLED) {
+if (BLE_ENABLED && process.env.NODE_ENV !== 'test') {
   initializeBLEService({
     autoStart: process.env.BLE_AUTO_START === "true"
   }).catch((error) => {
     console.warn("⚠️ BLE initialization skipped:", error.message);
   });
-} else {
+} else if (!BLE_ENABLED) {
   console.log("ℹ️ BLE disabled via BLE_ENABLED=false");
 }
 
@@ -157,6 +159,15 @@ try {
   console.warn("⚠️ BLE routes not found:", err.message);
 }
 
+// 9. BLE Allocation Routes
+try {
+  const bleAllocationRoutes = (await import("./routes/bleAllocation.routes.js")).default;
+  app.use("/api/admin/ble", bleAllocationRoutes);
+  console.log("✅ BLE allocation routes loaded");
+} catch (err) {
+  console.warn("⚠️ BLE allocation routes not found:", err.message);
+}
+
 // ===== TEST ROUTE =====
 app.get("/api/test", (req, res) => {
   res.json({ success: true, message: "Server is running!" });
@@ -208,6 +219,8 @@ const startServer = (port, retryCount = 0) => {
   });
 };
 
-startServer(BASE_PORT);
+if (process.env.NODE_ENV !== 'test') {
+  startServer(BASE_PORT);
+}
 
- export default app;
+export default app;

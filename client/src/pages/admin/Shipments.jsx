@@ -20,7 +20,7 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import axios from "axios";
+import api from "../../services/api";
 import ShipmentDetailsModal from "./ShipmentDetailsModal";
 import AddShipmentModal from "./AddShipmentModal";
 
@@ -68,12 +68,10 @@ export default function Shipments() {
       setLoading(true);
       const token = localStorage.getItem("token");
       const url = statusFilter === "all" 
-        ? `http://localhost:5000/api/admin/shipments?page=${currentPage}&limit=${itemsPerPage}`
-        : `http://localhost:5000/api/admin/shipments?status=${statusFilter}&page=${currentPage}&limit=${itemsPerPage}`;
+        ? `/admin/shipments?page=${currentPage}&limit=${itemsPerPage}`
+        : `/admin/shipments?status=${statusFilter}&page=${currentPage}&limit=${itemsPerPage}`;
       
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(url);
       
       setShipments(response.data.data || []);
       setTotalPages(response.data.pagination?.totalPages || 1);
@@ -89,9 +87,7 @@ export default function Shipments() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/shipments/stats", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get("/admin/shipments/stats");
       setStats(response.data.data);
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -193,12 +189,7 @@ export default function Shipments() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `http://localhost:5000/api/admin/shipments/${shipment._id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await api.delete(`/admin/shipments/${shipment._id}`);
       
       setIsDetailsModalOpen(false);
       setOpenMenuId(null);

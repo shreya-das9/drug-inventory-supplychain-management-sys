@@ -11,6 +11,11 @@ const shipmentSchema = new mongoose.Schema({
     ref: 'Supplier',
     required: [true, 'Supplier is required']
   },
+  order: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    default: null
+  },
   items: [{
     drug: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,7 +37,7 @@ const shipmentSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'],
+    enum: ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled', 'quarantined'],
     default: 'pending'
   },
   origin: {
@@ -74,6 +79,12 @@ const shipmentSchema = new mongoose.Schema({
   notes: {
     type: String,
     maxlength: 500
+  },
+  bleId: {
+    type: String,
+    uppercase: true,
+    trim: true,
+    default: null
   },
   statusHistory: [{
     status: String,

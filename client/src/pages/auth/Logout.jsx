@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Shield, CheckCircle } from "lucide-react";
-import axios from "axios";
+import api from "../../services/api";
 
 export default function Logout() {
   const navigate = useNavigate();
@@ -15,14 +15,9 @@ export default function Logout() {
         const token = localStorage.getItem("token");
         
         // Call logout API
-        await axios.post(
-          "http://localhost:5000/api/auth/logout",
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        await api.post(
+          "/auth/logout",
+          {}
         );
 
         // Clear all authentication data

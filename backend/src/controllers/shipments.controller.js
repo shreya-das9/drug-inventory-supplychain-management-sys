@@ -192,7 +192,7 @@ const updateShipmentStatus = async (req, res) => {
     const { id } = req.params;
     const { status, notes } = req.body;
     
-    const validStatuses = ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'];
+    const validStatuses = ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled', 'quarantined'];
     
     if (!validStatuses.includes(status.toLowerCase())) {
       return res.status(400).json({
