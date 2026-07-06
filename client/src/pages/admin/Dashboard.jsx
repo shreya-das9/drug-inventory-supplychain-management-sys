@@ -614,6 +614,7 @@ export default function Dashboard() {
 
   const [chartPeriod, setChartPeriod] = useState("year");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [liveNotifications, setLiveNotifications] = useState([]);
   const [mockBleData, setMockBleData] = useState(null);
   const [mockBleLoading, setMockBleLoading] = useState(false);
   const [mockBleError, setMockBleError] = useState("");
@@ -636,6 +637,7 @@ export default function Dashboard() {
     { id: 1, type: "warning", message: "Low stock alert: Aspirin", time: "5 min ago" },
     { id: 2, type: "success", message: "Order #ORD125 delivered", time: "15 min ago" },
     { id: 3, type: "info", message: "New supplier registration", time: "1 hour ago" },
+    ...liveNotifications,
   ];
 
   const topPerformers = [
@@ -664,6 +666,32 @@ export default function Dashboard() {
       }
     };
     fetchData();
+  }, [request]);
+
+  useEffect(() => {
+    const fetchEscalations = async () => {
+      try {
+        const res = await request("GET", "/api/admin/dashboard/alerts");
+        const incomingOrders = res?.data?.incomingOrders || [];
+        const escalated = incomingOrders
+          .filter((order) => order.escalatedToAdmin)
+          .slice(0, 3)
+          .map((order) => ({
+            id: order.id || order._id || order.orderNumber,
+            type: "warning",
+            message: `Order ${order.orderNumber} escalated to admin review`,
+            time: order.escalationReason || "Warehouse investigation required",
+          }));
+
+        setLiveNotifications(escalated);
+      } catch (error) {
+        console.error("Error fetching escalated orders:", error);
+      }
+    };
+
+    fetchEscalations();
+    const intervalId = setInterval(fetchEscalations, 60000);
+    return () => clearInterval(intervalId);
   }, [request]);
 
   const statCards = [

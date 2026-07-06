@@ -40,6 +40,8 @@ export default function Dashboard() {
   const [adjustmentQty, setAdjustmentQty] = React.useState("");
   const [adjustmentReason, setAdjustmentReason] = React.useState("");
 
+  const getOrderId = (order) => order?._id || order?.id;
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -155,17 +157,22 @@ export default function Dashboard() {
   const handleEscalateShortage = async () => {
     const order = escalateModal.order;
     if (!order) return;
+    const orderId = getOrderId(order);
+    if (!orderId) {
+      showNotification("Unable to escalate this order because the order ID is missing.", "error");
+      return;
+    }
 
     try {
-      setActionLoading(`escalate-${order._id}`);
-      await request('POST', `/api/admin/dashboard/alerts/${order._id}/escalate`, { reason: escalateReason });
+      setActionLoading(`escalate-${orderId}`);
+      await request('POST', `/api/admin/dashboard/alerts/${orderId}/escalate`, { reason: escalateReason });
 
       showNotification(`Shortage escalated to admin for ${order.medicine}`, "success");
       // update local alerts state
       setAlerts((prev) => ({
         ...prev,
         incomingOrders: prev.incomingOrders.map((o) =>
-          o._id === order._id ? { ...o, escalatedToAdmin: true } : o
+          getOrderId(o) === orderId ? { ...o, escalatedToAdmin: true } : o
         ),
       }));
 

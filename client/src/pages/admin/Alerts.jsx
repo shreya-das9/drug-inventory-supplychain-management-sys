@@ -228,6 +228,11 @@ export default function Alerts() {
                   <div>
                     <p className="font-semibold text-white">{order.orderNumber}</p>
                     <p className="text-sm text-slate-400">{order.medicine} • {order.quantity || 0} units • {order.purchaseOrderNumber || "PO N/A"}</p>
+                        {order.escalatedToAdmin && (
+                          <p className="mt-1 text-xs text-amber-300">
+                            Escalation: {order.escalationReason || "Warehouse requested admin review"}
+                          </p>
+                        )}
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm text-slate-300">
                     <span className="rounded-full bg-slate-800 px-3 py-1">Status: {order.status || "unknown"}</span>

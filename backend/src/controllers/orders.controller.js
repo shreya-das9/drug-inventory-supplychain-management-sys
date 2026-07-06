@@ -388,6 +388,6 @@ export default {
   updateOrderStatus,
   deleteOrder,
   cancelOrder,
-  getOrderStats
-  ,escalateOrder
+  getOrderStats,
+  escalateOrder
 };

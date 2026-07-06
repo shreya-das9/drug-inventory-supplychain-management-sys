@@ -58,7 +58,10 @@ export const getAlerts = async (req, res) => {
         .limit(50)
         .select("bleId stage scannedAt alertCodes location details verificationStatus"),
       Order.find({
-        status: { $in: ["pending", "confirmed"] },
+        $or: [
+          { status: { $in: ["pending", "confirmed"] } },
+          { escalatedToAdmin: true },
+        ],
       })
         .sort({ createdAt: -1 })
         .limit(12)
@@ -117,8 +120,15 @@ export const getAlerts = async (req, res) => {
         const item = order.items?.[0] || {};
         const medicineName = item.drug?.name || "Unknown";
         const inventoryAvailable = String(order.status || "").toLowerCase() === "confirmed";
+        const escalationReason =
+          order.statusHistory
+            ?.slice()
+            .reverse()
+            .find((entry) => entry.status === "escalated")?.notes ||
+          (order.escalatedToAdmin ? "Escalated by warehouse" : null);
 
         return {
+          _id: order._id,
           id: order._id,
           orderNumber: order.orderNumber,
           purchaseOrderNumber: order.purchaseOrderNumber,
@@ -131,6 +141,7 @@ export const getAlerts = async (req, res) => {
             ? "Confirm order and allocate BLE smart package"
             : "Notify retailer and admin of stock shortage",
           escalatedToAdmin: Boolean(order.escalatedToAdmin),
+          escalationReason,
           createdAt: order.createdAt,
           createdBy: order.createdBy,
         };
