@@ -3,7 +3,7 @@ import axios from "axios";
 import { useState } from "react";
 
 const API_BASE_CANDIDATES = [
-	import.meta.env.VITE_API_BASE_URL || "http://localhost:5001",
+	import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
 	"http://localhost:5002"
 ].filter(Boolean);
 
