@@ -11,6 +11,7 @@ import AdminAllowedEmail from '../models/AdminAllowedEmailModel.js';
 import supplierController from '../controllers/suppliers.controller.js';
 import shipmentController from '../controllers/shipments.controller.js';
 import orderController from '../controllers/orders.controller.js';
+import bleAllocationRoutes from './bleAllocation.routes.js';
 import dashboardRoutes from './admin/dashboard.routes.js';
 
 // Apply authentication to all routes
@@ -20,6 +21,9 @@ router.use(verifyToken);
 // Dashboard routes available for both admins and warehouse admins
 // (mounted before isAdmin middleware so warehouse admins can access)
 router.use('/dashboard', dashboardRoutes);
+
+// BLE allocation routes (warehouse admins)
+router.use('/ble', bleAllocationRoutes);
 
 // Apply admin role check to remaining routes
 router.use(isAdmin);

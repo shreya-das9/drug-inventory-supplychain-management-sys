@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Package, MapPin, Calendar, DollarSign, Truck, User, Building, Phone, Mail, Edit, Trash2 } from "lucide-react";
+import { X, Package, MapPin, Calendar, DollarSign, Truck, User, Building, Phone, Mail, Edit, Trash2, ShieldCheck, Clock3, ScanLine, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function ShipmentDetailsModal({ isOpen, onClose, shipment, onEdit, onDelete }) {
   if (!shipment) return null;
@@ -37,6 +37,7 @@ export default function ShipmentDetailsModal({ isOpen, onClose, shipment, onEdit
   const statusConfig = getStatusConfig(shipment.status);
 
   const formatDate = (dateString) => {
+    if (!dateString) return "TBD";
     return new Date(dateString).toLocaleDateString('en-US', { 
       month: 'long', 
       day: 'numeric', 
@@ -45,6 +46,19 @@ export default function ShipmentDetailsModal({ isOpen, onClose, shipment, onEdit
       minute: '2-digit'
     });
   };
+
+  const checkpointLabel = (checkpoint) => {
+    if (!checkpoint) return "Pending";
+    return String(checkpoint)
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  };
+
+  const timelineEntries = Array.isArray(shipment.timeline) ? shipment.timeline : [];
+  const statusHistory = Array.isArray(shipment.statusHistory) ? shipment.statusHistory : [];
+  const complianceStatus = shipment.complianceStatus || shipment.compliance?.status || "Pending";
+  const isDelayed = Boolean(shipment.isDelayed || shipment.delayDurationMinutes > 0 || shipment.currentCheckpoint === "delayed");
 
   return (
     <AnimatePresence>
@@ -212,6 +226,94 @@ export default function ShipmentDetailsModal({ isOpen, onClose, shipment, onEdit
                               <p className="text-sm font-bold text-cyan-400">₹{item.price.toLocaleString()}</p>
                             )}
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tracking progress */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-2 text-cyan-400 mb-2">
+                      <ScanLine className="w-5 h-5" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/50">Current checkpoint</p>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{checkpointLabel(shipment.currentCheckpoint || shipment.currentCheckpointStatus)}</p>
+                    <p className="text-sm text-white/60">Responsible: {shipment.currentResponsibleOrganization || "Warehouse"}</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-2 text-amber-400 mb-2">
+                      <Clock3 className="w-5 h-5" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/50">ETA / Delay</p>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{shipment.eta || shipment.expectedDeliveryDate ? formatDate(shipment.expectedDeliveryDate || shipment.eta) : "TBD"}</p>
+                    <p className="text-sm text-white/60">{isDelayed ? `${shipment.delayDurationMinutes || 0} min delay` : "On schedule"}</p>
+                  </div>
+                </div>
+
+                {/* BLE & compliance */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                      <ShieldCheck className="w-5 h-5" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/50">Compliance</p>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{complianceStatus}</p>
+                    <p className="text-sm text-white/60">{shipment.lastScanAt ? `Last scan: ${formatDate(shipment.lastScanAt)}` : "No scan recorded yet"}</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-2 text-cyan-400 mb-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/50">BLE package</p>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{shipment.bleId || "Unavailable"}</p>
+                    <p className="text-sm text-white/60">{shipment.bleId ? "Secure BLE verification active" : "BLE assignment pending"}</p>
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                {timelineEntries.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full" />
+                      Tracking Timeline
+                    </h3>
+                    <div className="space-y-3">
+                      {timelineEntries.map((entry, index) => (
+                        <div key={`${entry.timestamp || index}-${index}`} className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                          <div className="mt-1">
+                            {entry.status === "delivered" ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Clock3 className="w-5 h-5 text-cyan-400" />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-semibold text-white">{checkpointLabel(entry.checkpoint || entry.status)}</p>
+                              <p className="text-xs text-white/40">{formatDate(entry.timestamp)}</p>
+                            </div>
+                            <p className="text-sm text-white/60">{entry.organization || "Warehouse"}</p>
+                            {entry.status && <p className="text-xs text-white/40 mt-1">Status: {entry.status}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Status history */}
+                {statusHistory.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full" />
+                      Status History
+                    </h3>
+                    <div className="space-y-2">
+                      {statusHistory.map((entry, index) => (
+                        <div key={`${entry.timestamp || index}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{entry.status}</p>
+                            <p className="text-xs text-white/40">{entry.notes || "Updated"}</p>
+                          </div>
+                          <p className="text-xs text-white/40">{formatDate(entry.timestamp)}</p>
                         </div>
                       ))}
                     </div>

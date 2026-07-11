@@ -15,11 +15,13 @@ import {
   ShieldAlert,
   LogOut,
   ShoppingCart,
+  Truck,
   CheckCircle,
   Play,
   AlertCircle,
   Edit,
   X,
+  Sparkles,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
 
@@ -34,6 +36,7 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = React.useState(new Date());
   const [notification, setNotification] = React.useState(null);
   const [actionLoading, setActionLoading] = React.useState(null);
+  const [simulationEnabled, setSimulationEnabled] = React.useState(true);
   const [escalateModal, setEscalateModal] = React.useState({ show: false, order: null });
   const [escalateReason, setEscalateReason] = React.useState("");
   const [adjustInventoryModal, setAdjustInventoryModal] = React.useState({ show: false, item: null });
@@ -54,10 +57,54 @@ export default function Dashboard() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const emitSimulationSync = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("simulation:updated"));
+    }
+  };
+
+  const injectDemoWarehouseFlow = async () => {
+    try {
+      await request("POST", "/api/users/simulation/demo-flow", {
+        medicine: "Demo Vaccine",
+        quantity: 18,
+        totalAmount: 900,
+        purchaseOrderNumber: `WH-DEMO-${Date.now()}`,
+      });
+      await handleRefresh();
+      emitSimulationSync();
+      showNotification("Demo warehouse activity persisted and synced", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to create warehouse demo flow", "error");
+    }
+  };
+
+  const simulateBleAllocation = async () => {
+    try {
+      setActionLoading("simulation-ble");
+      await injectDemoWarehouseFlow();
+      showNotification("Warehouse simulation flow persisted and synced", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to create warehouse simulation flow", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const resetSimulationState = async () => {
+    try {
+      await request("POST", "/api/users/simulation/reset");
+      await handleRefresh();
+      emitSimulationSync();
+      showNotification("Warehouse demo state cleared", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to reset warehouse demo data", "error");
+    }
+  };
+
   const handleCreatePurchaseOrder = (lowStockItem) => {
     // This would typically navigate to a form or open a modal to create a PO
     showNotification(`Purchase order creation for ${lowStockItem.drugId?.name} initiated`, "success");
-    console.log("Create PO for:", lowStockItem);
   };
 
   const handleAcknowledgeShortage = (orderId) => {
@@ -86,31 +133,37 @@ export default function Dashboard() {
     try {
       setActionLoading(`ble-${orderId}`);
       const response = await request("POST", "/api/admin/ble/allocate", { orderId });
-      const assignedBleId = response?.data?.bleId;
+      const masked = response?.data?.maskedBleId;
+      const realBleId = response?.data?.bleId;
+      const shipmentId = response?.data?.shipmentId;
+      const trackingNumber = response?.data?.trackingNumber;
 
       setAlerts((prev) => ({
         ...prev,
         incomingOrders: prev.incomingOrders.map((order) =>
-          order._id === orderId ? { ...order, bleId: assignedBleId } : order
+          order._id === orderId ? { ...order, bleId: realBleId, maskedBleId: masked, shipmentId, trackingNumber } : order
         )
       }));
 
-      showNotification(`BLE package ${assignedBleId} assigned to order`, "success");
+      showNotification(`BLE package ${masked || realBleId} assigned to order`, "success");
+      return response?.data;
     } catch (error) {
       showNotification(error.message || "Failed to allocate BLE package", "error");
+      return null;
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleRunBleScan = async (order) => {
+  const executeBleWorkflowAction = async (order, options = {}) => {
     if (!order?.bleId) {
       showNotification("Order does not have a BLE package assigned", "error");
-      return;
+      return null;
     }
 
     try {
-      setActionLoading(`ble-scan-${order._id}`);
+      const actionKey = options.actionKey || `ble-${order._id}`;
+      setActionLoading(actionKey);
 
       const challengeResponse = await request("POST", "/api/ble/secure/challenge", { bleId: order.bleId });
       const challenge = challengeResponse?.data?.challenge;
@@ -125,13 +178,23 @@ export default function Dashboard() {
         bleId: order.bleId,
         challenge,
         signature,
-        stage: "warehouse",
+        stage: options.stage || "warehouse",
         location: { city: "Warehouse" },
-        orderId: order._id
+        orderId: order._id,
+        shipmentId: order.shipmentId || null,
+        ...(options.delayReason ? { delayReason: options.delayReason } : {}),
+        ...(options.trafficCondition ? { trafficCondition: options.trafficCondition } : {}),
+        ...(options.finalDelivery ? { finalDelivery: true } : {})
       });
 
       const verified = ingestResponse?.data?.verified;
-      const statusMessage = verified ? "BLE scan completed and verified" : "BLE scan completed with alerts";
+      const statusMessage = options.finalDelivery
+        ? "Delivery verification completed"
+        : options.delayReason
+          ? "Shipment delay reported"
+          : verified
+            ? "BLE scan completed and verified"
+            : "BLE scan completed with alerts";
 
       setAlerts((prev) => ({
         ...prev,
@@ -139,19 +202,174 @@ export default function Dashboard() {
           o._id === order._id
             ? {
                 ...o,
-                status: verified ? "shipped" : o.status,
-                lastBleScanStatus: ingestResponse?.data?.verificationStatus
+                status: options.finalDelivery ? "delivered" : verified ? "shipped" : o.status,
+                lastBleScanStatus: ingestResponse?.data?.verificationStatus || ingestResponse?.data?.status || null,
+                lastWorkflowState: options.finalDelivery ? "delivered" : options.delayReason ? "delayed" : "scanned"
               }
             : o
         )
       }));
 
-      showNotification(statusMessage, verified ? "success" : "warning");
+      showNotification(statusMessage, verified || options.finalDelivery ? "success" : "warning");
+      return ingestResponse?.data;
     } catch (error) {
       showNotification(error.message || "Failed to ingest BLE scan", "error");
+      return null;
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleRunBleScan = async (order) => {
+    await executeBleWorkflowAction(order, { actionKey: `ble-scan-${order._id}`, stage: "warehouse" });
+  };
+
+  const handleApproveOrder = async (order) => {
+    const orderId = getOrderId(order);
+    if (!orderId) return;
+
+    try {
+      setActionLoading(`approve-${orderId}`);
+      await request("PATCH", `/api/admin/orders/${orderId}/status`, {
+        status: "approved",
+        notes: "Approved from warehouse dashboard"
+      });
+
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((item) => item._id === orderId ? { ...item, status: "approved" } : item)
+      }));
+
+      showNotification("Order approved for fulfillment", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to approve order", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectOrder = async (order) => {
+    const orderId = getOrderId(order);
+    if (!orderId) return;
+
+    try {
+      setActionLoading(`reject-${orderId}`);
+      await request("PATCH", `/api/admin/orders/${orderId}/status`, {
+        status: "cancelled",
+        notes: "Rejected from warehouse dashboard"
+      });
+
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((item) => item._id === orderId ? { ...item, status: "cancelled" } : item)
+      }));
+
+      showNotification("Order rejected and flagged for review", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to reject order", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDispatchShipment = async (order) => {
+    const orderId = getOrderId(order);
+    if (!orderId) return;
+
+    try {
+      setActionLoading(`dispatch-${orderId}`);
+      let shipmentId = order.shipmentId;
+      if (!shipmentId) {
+        const allocation = await handleAllocateBLE(orderId);
+        shipmentId = allocation?.shipmentId;
+      }
+
+      if (!shipmentId) {
+        showNotification("No shipment is available to dispatch yet", "error");
+        return;
+      }
+
+      await request("PATCH", `/api/admin/shipments/${shipmentId}/status`, {
+        status: "shipped",
+        notes: "Shipment dispatched from warehouse dashboard"
+      });
+
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((item) => item._id === orderId ? { ...item, status: "shipped", shipmentId } : item)
+      }));
+
+      showNotification("Shipment dispatched", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to dispatch shipment", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAdvanceShipmentCheckpoint = async (order, checkpoint) => {
+    const orderId = getOrderId(order);
+    if (!orderId) return;
+
+    try {
+      setActionLoading(`checkpoint-${orderId}-${checkpoint}`);
+      let shipmentId = order.shipmentId;
+      if (!shipmentId) {
+        const allocation = await handleAllocateBLE(orderId);
+        shipmentId = allocation?.shipmentId;
+      }
+
+      if (!shipmentId) {
+        showNotification("No shipment is available to advance yet", "error");
+        return;
+      }
+
+      const statusMap = {
+        1: "processing",
+        2: "shipped",
+        3: "in_transit"
+      };
+
+      await request("PATCH", `/api/admin/shipments/${shipmentId}/status`, {
+        status: statusMap[checkpoint] || "processing",
+        notes: `Warehouse checkpoint ${checkpoint} advanced`
+      });
+
+      setAlerts((prev) => ({
+        ...prev,
+        incomingOrders: prev.incomingOrders.map((item) => item._id === orderId ? { ...item, shipmentId, lastWorkflowState: `checkpoint_${checkpoint}` } : item)
+      }));
+
+      showNotification(`Checkpoint ${checkpoint} advanced`, "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to advance shipment checkpoint", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelayShipment = async (order) => {
+    await executeBleWorkflowAction(order, {
+      actionKey: `delay-${order._id}`,
+      stage: "warehouse",
+      delayReason: "Route congestion and security inspection required."
+    });
+  };
+
+  const handleResumeShipment = async (order) => {
+    await executeBleWorkflowAction(order, {
+      actionKey: `resume-${order._id}`,
+      stage: "warehouse",
+      trafficCondition: "clear"
+    });
+  };
+
+  const handleCompleteDelivery = async (order) => {
+    await executeBleWorkflowAction(order, {
+      actionKey: `deliver-${order._id}`,
+      stage: "customer",
+      finalDelivery: true
+    });
   };
 
   const handleEscalateShortage = async () => {
@@ -233,7 +451,16 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     handleRefresh();
-  }, []);
+  }, [handleRefresh]);
+
+  React.useEffect(() => {
+    const handleSimulationUpdated = () => {
+      handleRefresh();
+    };
+
+    window.addEventListener("simulation:updated", handleSimulationUpdated);
+    return () => window.removeEventListener("simulation:updated", handleSimulationUpdated);
+  }, [handleRefresh]);
 
   const filteredExpiryAlerts = React.useMemo(() => {
     const query = searchText.trim().toLowerCase();
@@ -320,9 +547,10 @@ export default function Dashboard() {
   }, [alerts.expiryAlerts, alerts.lowStockAlerts, stats]);
 
   return (
-    <div className="min-h-screen p-6 md:p-8 bg-gradient-to-br from-slate-950 via-[#0b1732] to-[#070d1f] text-white">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Notification Toast */}
+    <>
+      <div className="min-h-screen p-6 md:p-8 bg-gradient-to-br from-slate-950 via-[#0b1732] to-[#070d1f] text-white">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Notification Toast */}
         <AnimatePresence>
           {notification && (
             <motion.div
@@ -361,6 +589,10 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-sm text-violet-100">
+              <Sparkles className="w-4 h-4" />
+              <span>{simulationEnabled ? "Simulation mode" : "Live mode"}</span>
+            </div>
             <motion.button
               whileHover={{ scale: 1.05, rotate: 180 }}
               whileTap={{ scale: 0.95 }}
@@ -392,6 +624,45 @@ export default function Dashboard() {
             </motion.button>
           </div>
         </motion.div>
+
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4 text-sm text-violet-100 backdrop-blur-xl">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-semibold">Warehouse demo controls</p>
+              <p className="text-violet-100/80">Preview shortage, BLE allocation, and dispatch scenarios in the dashboard without changing the backend.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSimulationEnabled((prev) => !prev)}
+                className="rounded-lg border border-violet-400/30 bg-slate-950/50 px-3 py-2 text-sm font-medium text-violet-100"
+              >
+                {simulationEnabled ? "Disable demo mode" : "Enable demo mode"}
+              </button>
+              <button
+                type="button"
+                onClick={injectDemoWarehouseFlow}
+                className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100"
+              >
+                Simulate shortage
+              </button>
+              <button
+                type="button"
+                onClick={simulateBleAllocation}
+                className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100"
+              >
+                Simulate BLE allocation
+              </button>
+              <button
+                type="button"
+                onClick={resetSimulationState}
+                className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-white/80"
+              >
+                Reset demo state
+              </button>
+            </div>
+          </div>
+        </div>
 
         <AnimatePresence>
           {showAlerts && (
@@ -666,6 +937,28 @@ export default function Dashboard() {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={() => handleApproveOrder(order)}
+                            disabled={actionLoading === `approve-${order._id}` || ["approved", "shipped", "delivered", "completed", "cancelled"].includes(String(order.status || "").toLowerCase())}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
+                            title="Approve order"
+                          >
+                            <CheckCircle className="w-3 h-3" />
+                            Approve Order
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleRejectOrder(order)}
+                            disabled={actionLoading === `reject-${order._id}` || ["cancelled", "delivered", "completed"].includes(String(order.status || "").toLowerCase())}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-rose-500/30 hover:bg-rose-500/50 text-rose-200 font-semibold transition-colors disabled:opacity-50"
+                            title="Reject order"
+                          >
+                            <X className="w-3 h-3" />
+                            Reject Order
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => handleAllocateBLE(order._id)}
                             disabled={actionLoading === `ble-${order._id}`}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-cyan-500/30 hover:bg-cyan-500/50 text-cyan-200 font-semibold transition-colors disabled:opacity-50"
@@ -675,17 +968,85 @@ export default function Dashboard() {
                             Allocate BLE
                           </motion.button>
                           {order.bleId && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleRunBleScan(order)}
-                              disabled={actionLoading === `ble-scan-${order._id}`}
-                              className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
-                              title="Run BLE scan ingestion"
-                            >
-                              <Truck className="w-3 h-3" />
-                              Run BLE Scan
-                            </motion.button>
+                            <>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDispatchShipment(order)}
+                                disabled={actionLoading === `dispatch-${order._id}`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-indigo-500/30 hover:bg-indigo-500/50 text-indigo-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Dispatch shipment"
+                              >
+                                <Truck className="w-3 h-3" />
+                                Dispatch Shipment
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleAdvanceShipmentCheckpoint(order, 1)}
+                                disabled={actionLoading === `checkpoint-${order._id}-1`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Advance first checkpoint"
+                              >
+                                <Play className="w-3 h-3" />
+                                Advance Checkpoint 1
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleAdvanceShipmentCheckpoint(order, 2)}
+                                disabled={actionLoading === `checkpoint-${order._id}-2`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Advance second checkpoint"
+                              >
+                                <Play className="w-3 h-3" />
+                                Advance Checkpoint 2
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleAdvanceShipmentCheckpoint(order, 3)}
+                                disabled={actionLoading === `checkpoint-${order._id}-3`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Advance third checkpoint"
+                              >
+                                <Play className="w-3 h-3" />
+                                Advance Checkpoint 3
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDelayShipment(order)}
+                                disabled={actionLoading === `delay-${order._id}`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-amber-500/30 hover:bg-amber-500/50 text-amber-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Flag a delay"
+                              >
+                                <Clock3 className="w-3 h-3" />
+                                Delay Shipment
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleResumeShipment(order)}
+                                disabled={actionLoading === `resume-${order._id}`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Resume shipment"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                Resume Shipment
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleCompleteDelivery(order)}
+                                disabled={actionLoading === `deliver-${order._id}`}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Complete delivery"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                                Complete Delivery
+                              </motion.button>
+                            </>
                           )}
                           <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -881,6 +1242,7 @@ export default function Dashboard() {
         </AnimatePresence>
       </div>
     </div>
+    </>
   );
 }
 

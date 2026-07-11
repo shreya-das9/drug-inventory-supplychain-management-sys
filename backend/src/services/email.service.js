@@ -26,9 +26,17 @@ export const initializeEmailService = () => {
 
   // Test email configuration
   transporter.verify((error, success) => {
+    console.info('[TRANSPORT_READY]', {
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      user: process.env.EMAIL_USER,
+      transportVerified: !!success,
+      error: error ? error.stack || error : null,
+    });
+
     if (error) {
-      console.log("❌ Email configuration error:", error);
-      console.log("Check your .env file for correct EMAIL_USER and EMAIL_PASS values");
+      console.error("❌ Email configuration error:", error);
+      console.error("Check your .env file for correct EMAIL_USER and EMAIL_PASS values");
     } else {
       console.log("✅ Email server is ready to send messages");
     }
@@ -36,15 +44,15 @@ export const initializeEmailService = () => {
 };
 
 // Get the transporter (use this in routes)
-export const getEmailTransporter = () => {
-  if (!transporter) {
-    throw new Error('Email service not initialized. Call initializeEmailService() first.');
-  }
-  return transporter;
-};
+export const getEmailTransporter = () => transporter;
 
 export const sendBleAlertEmail = async ({ tracking, to } = {}) => {
   const mailer = getEmailTransporter();
+
+  if (!mailer) {
+    console.warn("Email service not initialized; skipping BLE alert email");
+    return null;
+  }
 
   if (!tracking) {
     throw new Error("Missing tracking payload for BLE alert email");

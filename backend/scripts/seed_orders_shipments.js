@@ -124,14 +124,25 @@ async function seedOrdersAndShipments() {
     }
     console.log(`✅ Found ${suppliers.length} suppliers`);
 
-    // Step 6: Create shipments from suppliers
+    // Step 6: Create shipments from suppliers and associate them with retailer orders
     const shipmentStatuses = ["pending", "processing", "shipped", "in_transit", "delivered"];
     const shippingMethods = ["air", "ground", "express", "standard"];
     const carriers = ["Blue Dart", "DTDC", "FedEx", "DHL", "Indian Post"];
     const shipments = [];
 
-    for (let i = 0; i < 10; i++) {
+    const retailerOrders = orders.filter((order) =>
+      customers.some(
+        (customer) =>
+          customer.role === "RETAILER" &&
+          customer._id?.toString() === order.user?.toString()
+      )
+    );
+    const orderList = retailerOrders.length ? retailerOrders : orders;
+
+    // Create one shipment per order in orderList to ensure retailer orders have linked shipments
+    for (let i = 0; i < orderList.length; i++) {
       const supplier = suppliers[i % suppliers.length];
+      const order = orderList[i] || null;
       const numItems = Math.floor(Math.random() * 4) + 2; // 2-5 items per shipment
       const shipmentItems = [];
       let totalAmount = 0;
@@ -160,6 +171,7 @@ async function seedOrdersAndShipments() {
 
       const shipment = await Shipment.create({
         supplier: supplier._id,
+        order: order?._id || null,
         items: shipmentItems,
         status: status,
         origin: {
@@ -170,11 +182,11 @@ async function seedOrdersAndShipments() {
           zipCode: `${400000 + Math.floor(Math.random() * 100000)}`
         },
         destination: {
-          address: "Main Warehouse",
-          city: "Kolkata",
-          state: "West Bengal",
-          country: "India",
-          zipCode: "700001"
+          address: order ? order.shippingAddress?.street || "Retailer Warehouse" : "Main Warehouse",
+          city: order ? order.shippingAddress?.city || "Kolkata" : "Kolkata",
+          state: order ? order.shippingAddress?.state || "West Bengal" : "West Bengal",
+          country: order ? order.shippingAddress?.country || "India" : "India",
+          zipCode: order ? order.shippingAddress?.zipCode || "700001" : "700001"
         },
         expectedDeliveryDate: expectedDeliveryDate,
         actualDeliveryDate: actualDeliveryDate,
@@ -200,12 +212,12 @@ async function seedOrdersAndShipments() {
     console.log(`📦 Total Orders: ${orders.length}`);
     console.log(`🚛 Total Shipments: ${shipments.length}`);
     console.log("\nShipment Status Breakdown:");
-    const pending = shipments.filter(s => s.status === "PENDING").length;
-    const shipped = shipments.filter(s => s.status === "SHIPPED").length;
-    const delivered = shipments.filter(s => s.status === "DELIVERED").length;
-    console.log(`  - PENDING: ${pending}`);
-    console.log(`  - SHIPPED: ${shipped}`);
-    console.log(`  - DELIVERED: ${delivered}`);
+    const pending = shipments.filter(s => s.status === "pending").length;
+    const shipped = shipments.filter(s => s.status === "shipped").length;
+    const delivered = shipments.filter(s => s.status === "delivered").length;
+    console.log(`  - pending: ${pending}`);
+    console.log(`  - shipped: ${shipped}`);
+    console.log(`  - delivered: ${delivered}`);
     console.log("\n✅ You can now test shipment endpoints!");
     console.log("=".repeat(50));
 

@@ -82,29 +82,53 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
     const normalizedEmail = String(email || "").trim().toLowerCase();
 
+    console.info("[auth] Login request received", { path: req.originalUrl, ip: req.ip });
+    console.info("[auth] email received for login", { email: normalizedEmail });
+
     const user = await User.findOne({ email: normalizedEmail });
+    console.info("[auth] database lookup result", { email: normalizedEmail, found: !!user, userId: user?._id });
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      console.warn("[auth] login failed - user not found", { email: normalizedEmail });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     if (user.role === "ADMIN" && !(await isAdminAllowedEmail(normalizedEmail))) {
+      console.warn("[auth] admin login rejected - unauthorized admin email", { email: normalizedEmail });
       return res.status(403).json({
         message: "This admin email is not authorized"
       });
     }
 
+    console.info("[auth] comparing password for user", { userId: user._id });
     const isMatch = await user.matchPassword(password);
+    console.info("[auth] password comparison result", { userId: user._id, matched: !!isMatch });
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      console.warn("[auth] login failed - invalid credentials", { userId: user._id });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Generate JWT
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
-    );
+    // Ensure JWT secret is available
+    if (!process.env.JWT_SECRET) {
+      console.error("[auth] Login error: JWT_SECRET is not set in environment");
+      return res.status(500).json({ message: "Server misconfiguration: missing JWT secret" });
+    }
 
+    // Generate JWT (guarded to avoid throwing unexpected errors)
+    let token;
+    try {
+      token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+      );
+      // Log success of token generation, but do not log full token value
+      console.info("[auth] JWT generated", { userId: user._id, tokenPreview: token?.slice?.(0, 8) });
+    } catch (signErr) {
+      console.error("[auth] Login error signing JWT:", signErr && signErr.stack ? signErr.stack : signErr);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+
+    console.info("[auth] sending login success response", { userId: user._id });
     res.json({
       message: "Login successful",
       token,
@@ -116,7 +140,7 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Login error:", error && error.stack ? error.stack : error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -129,7 +153,8 @@ router.post("/forgot-password", async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.json({ message: "If that email exists, a reset link has been sent" });
     }
@@ -144,7 +169,7 @@ router.post("/forgot-password", async (req, res) => {
 
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to: email,
+      to: normalizedEmail,
       subject: "Password Reset - Drug Inventory",
       html: `<p>Click here to reset your password: <a href="${resetUrl}">${resetUrl}</a></p>`,
     });

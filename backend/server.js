@@ -113,6 +113,11 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { initializeEmailService } from "./src/services/email.service.js";
+import { exec } from 'child_process';
+import path from 'path';
+import Supplier from './src/models/SupplierModel.js';
+import Drug from './src/models/Drug.js';
+import Inventory from './src/models/Inventory.js';
 
 dotenv.config();
 
@@ -124,17 +129,50 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// CORS - allow common dev ports (5173 used by Vite)
+// Auto-seed test data in development if collections are empty
+mongoose.connection.once('open', async () => {
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      const [supplierCount, drugCount, inventoryCount] = await Promise.all([
+        Supplier.countDocuments(),
+        Drug.countDocuments(),
+        Inventory.countDocuments(),
+      ]);
+
+      if (supplierCount === 0 && drugCount === 0 && inventoryCount === 0) {
+        console.log('⚙️ No data found — seeding test data (development mode)');
+        const seedScript = path.join(process.cwd(), 'backend', 'scripts', 'seed_test_data.js');
+        exec(`node "${seedScript}"`, (err, stdout, stderr) => {
+          if (err) {
+            console.error('❌ Seeding failed:', err.message);
+            return;
+          }
+          if (stdout) console.log(stdout);
+          if (stderr) console.error(stderr);
+          console.log('✅ Test data seeding finished');
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Auto-seed check failed:', err.message);
+  }
+});
+
+// CORS - allow common dev ports (Vite may choose 5173-5176)
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
+  "http://localhost:5176",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) || /^http:\/\/localhost:517\d$/.test(origin)) {
+        return callback(null, true);
+      }
       return callback(new Error(`CORS blocked: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],

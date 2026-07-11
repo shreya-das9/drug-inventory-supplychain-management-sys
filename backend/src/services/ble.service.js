@@ -551,7 +551,8 @@ export const verifySecureScan = async ({
 	trafficCondition,
 	delayReason,
 	timestamp,
-	scannedBy = null
+	scannedBy = null,
+	shipmentContext = null
 }) => {
 	const resolvedBleId = String(bleId || "")
 		.toUpperCase()
@@ -564,11 +565,9 @@ export const verifySecureScan = async ({
 	if (!resolvedBleId) throw new Error("bleId is required.");
 	if (!challenge) throw new Error("challenge is required.");
 	if (!signature) throw new Error("signature is required.");
-	if (Number.isNaN(resolvedScanTime.getTime())) {
-		throw new Error("timestamp is invalid.");
-	}
+if (!resolvedStage) throw new Error("stage is required and must be one of manufacturer, distributor, warehouse, pharmacy, customer.");
 
-	const registry = await BLERegistry.findOne({ bleId: resolvedBleId }).select("+secretKey");
+	const registry = await BLERegistry.findOne({ bleId: resolvedBleId }).select('+secretKey');
 	if (!registry) {
 		throw new Error(`BLE ID ${resolvedBleId} not found.`);
 	}
@@ -603,15 +602,28 @@ export const verifySecureScan = async ({
 		verificationStatus: "VERIFIED"
 	}).sort({ scannedAt: -1 });
 
+	const contextualExpectedStage = shipmentContext?.expectedStage || null;
 	const flowResult = evaluateFlow({
 		previousStage: previousVerifiedScan?.stage || null,
 		nextStage: resolvedStage
 	});
 
 	if (!flowResult.ok) {
-		alerts.push(flowResult.code);
-		if (verificationStatus === "VERIFIED") {
-			verificationStatus = "BLOCKED";
+		const shouldAllowByShipmentContext = Boolean(
+			!previousVerifiedScan &&
+			contextualExpectedStage &&
+			resolvedStage === contextualExpectedStage
+		);
+
+		if (shouldAllowByShipmentContext) {
+			flowResult.ok = true;
+			flowResult.code = null;
+			flowResult.details = "Flow initialized using shipment checkpoint context.";
+		} else {
+			alerts.push(flowResult.code);
+			if (verificationStatus === "VERIFIED") {
+				verificationStatus = "BLOCKED";
+			}
 		}
 	}
 
@@ -691,9 +703,13 @@ export const verifySecureScan = async ({
 		await registry.save();
 	}
 
+	const verified = verificationStatus === "VERIFIED";
+
 	return {
 		bleId: resolvedBleId,
-    stage: resolvedStage,
+		stage: resolvedStage,
+		verificationStatus,
+		verified,
 		alerts,
 		flow: flowResult,
 		geoTemporal: geoResult,

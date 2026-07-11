@@ -1,7 +1,8 @@
 import React from "react";
-import { API_BASE_URL } from "../../services/api";
+import { useApi } from "../../hooks/useApi";
 
 export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
+  const { request } = useApi();
   const [loading, setLoading] = React.useState(false);
   const [suppliers, setSuppliers] = React.useState([]);
   const [drugs, setDrugs] = React.useState([]);
@@ -35,18 +36,9 @@ export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
 
   const fetchSuppliers = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/admin/suppliers`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        console.error("Failed to fetch suppliers");
-        return;
-      }
-      
-      const data = await response.json();
-      const approved = Array.isArray(data) ? data.filter(s => s.status === 'APPROVED') : [];
+      const response = await request("GET", "/admin/suppliers");
+      const data = response?.data || response;
+      const approved = Array.isArray(data) ? data.filter((s) => s.status === "APPROVED") : [];
       setSuppliers(approved);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
@@ -56,17 +48,8 @@ export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
 
   const fetchDrugs = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/admin/drugs`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        console.error("Failed to fetch drugs");
-        return;
-      }
-      
-      const data = await response.json();
+      const response = await request("GET", "/admin/drugs");
+      const data = response?.data || response;
       setDrugs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching drugs:", error);
@@ -165,21 +148,10 @@ export default function AddShipmentModal({ isOpen, onClose, onSuccess }) {
       
       const shipmentData = {
         ...formData,
-        totalAmount
+        totalAmount,
       };
 
-      const response = await fetch(`${API_BASE_URL}/admin/shipments`, {
-        method: 'POST',
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(shipmentData)
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create shipment");
-      }
+      await request("POST", "/admin/shipments", shipmentData);
 
       // Reset form
       setFormData({

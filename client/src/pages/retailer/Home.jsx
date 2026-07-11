@@ -22,8 +22,15 @@ import {
   X,
   Trash2,
   XCircle,
+  Sparkles,
+  PlayCircle,
 } from "lucide-react";
 import { useApi } from "../../hooks/useApi";
+import ShipmentDetailsModal from "../admin/ShipmentDetailsModal";
+import { buildRetailerFallbackData, shouldSeedRetailerFallbackData } from "./retailerDashboardData";
+
+const DIAG_FRONTEND = false;
+const DIAG_RENDER = false; // set to true only during debugging
 
 // Add style for dropdown options
 const dropdownStyles = `
@@ -45,21 +52,24 @@ const dropdownStyles = `
   }
 `;
 
-// Mock data for retailer orders
-const mockOrders = [
-  { _id: "1", orderNumber: "ORD-2401", purchaseOrderNumber: "PO-2401", status: "Delivered", totalAmount: 450.50, date: "2026-02-20" },
-  { _id: "2", orderNumber: "ORD-2402", purchaseOrderNumber: "PO-2402", status: "Shipped", totalAmount: 320.75, date: "2026-02-21" },
-  { _id: "3", orderNumber: "ORD-2403", purchaseOrderNumber: "PO-2403", status: "Pending", totalAmount: 185.00, date: "2026-02-22" },
-  { _id: "4", orderNumber: "ORD-2404", purchaseOrderNumber: "PO-2404", status: "Confirmed", totalAmount: 520.25, date: "2026-02-23" },
-  { _id: "5", orderNumber: "ORD-2405", purchaseOrderNumber: "PO-2405", status: "Delivered", totalAmount: 410.00, date: "2026-02-24" },
-  { _id: "6", orderNumber: "ORD-2406", purchaseOrderNumber: "PO-2406", status: "Processing", totalAmount: 290.50, date: "2026-02-25" },
-];
+const normalizeOrder = (order = {}, idx = 0) => ({
+  ...order,
+  _id: order._id || order.id || `temp-order-${idx}`,
+  status: String(order.status || "pending").charAt(0).toUpperCase() + String(order.status || "pending").slice(1),
+  orderNumber: order.orderNumber || order.order_number || `ORD-${String(order._id || order.id || idx).slice(0, 8)}`,
+  purchaseOrderNumber: order.purchaseOrderNumber || order.purchase_order_number || "N/A",
+  totalAmount: Number(order.totalAmount ?? order.total_amount ?? order.amount ?? 0),
+  date: order.createdAt || order.date || new Date().toISOString(),
+});
 
-const mockShipments = [
-  { _id: "1", trackingNumber: "TRK-98231", status: "shipped", isDelayed: false, eta: "Today" },
-  { _id: "2", trackingNumber: "TRK-98232", status: "delivered", isDelayed: false, eta: "Yesterday" },
-  { _id: "3", trackingNumber: "TRK-98233", status: "shipped", isDelayed: true, eta: "Tomorrow" },
-];
+const normalizeShipment = (shipment = {}, idx = 0) => ({
+  ...shipment,
+  _id: shipment._id || shipment.id || `temp-shipment-${idx}`,
+  trackingNumber: shipment.trackingNumber || shipment.tracking_number || shipment.order?.orderNumber || `SHP-${idx}`,
+  status: String(shipment.status || "pending").charAt(0).toUpperCase() + String(shipment.status || "pending").slice(1),
+  eta: shipment.expectedDeliveryDate ? new Date(shipment.expectedDeliveryDate).toLocaleDateString() : shipment.eta || "TBD",
+  isDelayed: shipment.isDelayed ?? shipment.delayed ?? false,
+});
 
 const statusColors = {
   Pending: { text: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30" },
@@ -73,6 +83,9 @@ const statusColors = {
 export default function RetailerHome() {
   const navigate = useNavigate();
   const { request } = useApi();
+  React.useEffect(() => {
+    console.log('[DIAG][Home.mount] RetailerHome mounted');
+  }, []);
   const [orders, setOrders] = React.useState([]);
   const [shipments, setShipments] = React.useState([]);
   const [stats, setStats] = React.useState(null);
@@ -82,6 +95,10 @@ export default function RetailerHome() {
   const [lastUpdate, setLastUpdate] = React.useState(new Date());
   const [statusFilter, setStatusFilter] = React.useState("All");
   const [showAllOrders, setShowAllOrders] = React.useState(false);
+  const [trackingShipment, setTrackingShipment] = React.useState(null);
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = React.useState(false);
+  const [trackLoading, setTrackLoading] = React.useState(false);
+  const [trackError, setTrackError] = React.useState(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = React.useState(false);
   const [newOrder, setNewOrder] = React.useState({
     medicine: "",
@@ -92,6 +109,7 @@ export default function RetailerHome() {
   const [notification, setNotification] = React.useState(null);
   const [actionLoading, setActionLoading] = React.useState(null);
   const [shipmentActionLoading, setShipmentActionLoading] = React.useState(null);
+  const [simulationEnabled, setSimulationEnabled] = React.useState(true);
   const [cancelReasonModal, setCancelReasonModal] = React.useState({ show: false, orderId: null });
   const [cancelReason, setCancelReason] = React.useState("");
   const [quarantineModal, setQuarantineModal] = React.useState({ show: false, shipmentId: null });
@@ -109,6 +127,50 @@ export default function RetailerHome() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const emitSimulationSync = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("simulation:updated"));
+    }
+  };
+
+  const addDemoOrderFlow = async () => {
+    try {
+      await request("POST", "/api/users/simulation/demo-flow", {
+        medicine: "Demo Antibiotic",
+        quantity: 24,
+        totalAmount: 1250,
+        purchaseOrderNumber: `PO-DEMO-${Date.now()}`,
+      });
+      await fetchData();
+      emitSimulationSync();
+      showNotification("Demo order flow persisted and synced across dashboards", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to create demo order flow", "error");
+    }
+  };
+
+  const simulateShipmentUpdate = async () => {
+    try {
+      setShipmentActionLoading("simulation-order");
+      await addDemoOrderFlow();
+      showNotification("Retailer simulation flow persisted and synced", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to create retailer simulation flow", "error");
+    } finally {
+      setShipmentActionLoading(null);
+    }
+  };
+
+  const resetSimulationData = async () => {
+    try {
+      await request("POST", "/api/users/simulation/reset");
+      await fetchData();
+      showNotification("Demo entries cleared", "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to reset demo data", "error");
+    }
+  };
+
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm("Are you sure you want to delete this order?")) return;
 
@@ -117,6 +179,7 @@ export default function RetailerHome() {
       await request("DELETE", `/api/users/retailer/orders/${orderId}`);
       setOrders((prev) => prev.filter((o) => o._id !== orderId));
       showNotification("Order deleted successfully", "success");
+      await fetchData();
     } catch (error) {
       showNotification(error.message || "Failed to delete order", "error");
     } finally {
@@ -137,6 +200,7 @@ export default function RetailerHome() {
         prev.map((o) => (o._id === orderId ? { ...o, status: "cancelled" } : o))
       );
       showNotification("Order cancelled successfully", "success");
+      await fetchData();
       setCancelReasonModal({ show: false, orderId: null });
       setCancelReason("");
     } catch (error) {
@@ -158,11 +222,48 @@ export default function RetailerHome() {
         )
       );
       showNotification("Shipment confirmed as delivered", "success");
+      await fetchData();
     } catch (error) {
       showNotification(error.message || "Failed to confirm shipment", "error");
     } finally {
       setShipmentActionLoading(null);
     }
+  };
+
+  const handleTrackShipment = async (shipment) => {
+    if (!shipment?._id) {
+      const message = "Unable to track shipment: ID is missing.";
+      setTrackError(message);
+      showNotification(message, "error");
+      return;
+    }
+
+    setTrackLoading(true);
+    setTrackError(null);
+
+    try {
+      const response = await request("GET", `/api/users/retailer/shipments/${shipment._id}`);
+      const shipmentDetail = response?.shipment ?? response?.data?.shipment ?? response?.data ?? null;
+
+      if (!shipmentDetail) {
+        throw new Error("Shipment details are unavailable.");
+      }
+
+      setTrackingShipment(shipmentDetail);
+      setIsTrackingModalOpen(true);
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || "Failed to fetch shipment details.";
+      setTrackError(message);
+      showNotification(message, "error");
+    } finally {
+      setTrackLoading(false);
+    }
+  };
+
+  const handleCloseTracking = () => {
+    setIsTrackingModalOpen(false);
+    setTrackingShipment(null);
+    setTrackError(null);
   };
 
   const handleQuarantineShipment = async () => {
@@ -180,6 +281,7 @@ export default function RetailerHome() {
         )
       );
       showNotification("Shipment quarantined successfully", "success");
+      await fetchData();
       setQuarantineModal({ show: false, shipmentId: null });
       setQuarantineReason("");
     } catch (error) {
@@ -214,13 +316,8 @@ export default function RetailerHome() {
 
       const createdOrder = response?.data?.order;
       if (createdOrder) {
-        setOrders((prev) => [createdOrder, ...prev]);
-        setStats((prev) => ({
-          ...(prev || {}),
-          totalOrders: (prev?.totalOrders || 0) + 1,
-          pendingOrders: (prev?.pendingOrders || 0) + (createdOrder.status === "pending" ? 1 : 0),
-        }));
         showNotification("Order created successfully!", "success");
+        await fetchData();
       }
 
       setLastUpdate(new Date());
@@ -233,80 +330,134 @@ export default function RetailerHome() {
 
   const fetchData = React.useCallback(async () => {
     try {
+      console.log("[DIAG][Home] fetchData: start");
+      console.log('[DIAG][Home] typeof request', typeof request, { hasToken: !!localStorage.getItem('token') });
       setPageLoading(true);
-      const response = await request("GET", "/api/users/retailer/orders?limit=50");
-      const shipmentsResponse = await request("GET", "/api/users/retailer/shipments");
-      
-      // Extract orders - check different possible response structures
-      let fetchedOrders = [];
-      if (response?.data?.orders) {
-        fetchedOrders = response.data.orders;
-      } else if (response?.orders) {
-        fetchedOrders = response.orders;
-      } else if (Array.isArray(response)) {
-        fetchedOrders = response;
-      }
-      
-      if (!Array.isArray(fetchedOrders)) {
-        fetchedOrders = [];
+
+      const ordersUrl = "/api/users/retailer/orders?limit=50";
+      const shipmentsUrl = "/api/users/retailer/shipments";
+      console.log("[DIAG][Home] Shipment fetch started", shipmentsUrl);
+      console.log("[DIAG][Home] Calling orders API", ordersUrl);
+      console.log("[DIAG][Home] Calling shipments API", shipmentsUrl);
+
+      // Guard and trace the request invocation to ensure the call is reached
+      if (typeof request !== 'function') {
+        throw new Error('useApi.request is not a function');
       }
 
-      let fetchedShipments = [];
-      if (shipmentsResponse?.data?.shipments) {
-        fetchedShipments = shipmentsResponse.data.shipments;
-      } else if (shipmentsResponse?.shipments) {
-        fetchedShipments = shipmentsResponse.shipments;
-      } else if (Array.isArray(shipmentsResponse)) {
-        fetchedShipments = shipmentsResponse;
+      console.log('[DIAG][Home] About to invoke request for orders and shipments');
+      const ordersPromise = (async () => {
+        console.log('[DIAG][Home] invoking request GET', ordersUrl);
+        return request("GET", ordersUrl);
+      })();
+      const shipmentsPromise = (async () => {
+        console.log('[DIAG][Home] invoking request GET', shipmentsUrl);
+        return request("GET", shipmentsUrl);
+      })();
+
+      const [ordersResult, shipmentsResult] = await Promise.allSettled([ordersPromise, shipmentsPromise]);
+
+      console.log("[DIAG][Home] ordersResult", ordersResult);
+      console.log("[DIAG][Home] shipmentsResult", shipmentsResult);
+
+      const fetchedOrders = ordersResult.status === "fulfilled"
+        ? ordersResult.value?.data?.orders ?? ordersResult.value?.orders ?? []
+        : [];
+
+      const fetchedShipments = shipmentsResult.status === "fulfilled"
+        ? shipmentsResult.value?.data?.shipments ?? shipmentsResult.value?.shipments ?? []
+        : [];
+
+      const normalizedOrders = Array.isArray(fetchedOrders)
+        ? fetchedOrders.map(normalizeOrder)
+        : [];
+
+      const normalizedShipments = Array.isArray(fetchedShipments)
+        ? fetchedShipments.map(normalizeShipment)
+        : [];
+
+      console.log("[DIAG][Home] Shipment response received", { fetchedShipments, normalizedShipmentsLength: normalizedShipments.length });
+
+      const fallbackDecision = shouldSeedRetailerFallbackData(normalizedOrders, normalizedShipments, localStorage.getItem("token") || "");
+      const finalOrders = fallbackDecision.shouldSeed ? buildRetailerFallbackData().orders : normalizedOrders;
+      const finalShipments = fallbackDecision.shouldSeed ? buildRetailerFallbackData().shipments : normalizedShipments;
+
+      if (DIAG_FRONTEND) {
+        console.log(`[DIAG][Home] Normalized counts - orders:${normalizedOrders.length} shipments:${normalizedShipments.length}`);
+        console.log("[DIAG][Home] Sample order:", normalizedOrders[0]);
+        console.log("[DIAG][Home] Sample shipment:", normalizedShipments[0]);
       }
 
-      if (!Array.isArray(fetchedShipments)) {
-        fetchedShipments = [];
-      }
-
-      const normalizedShipments = fetchedShipments.map((shipment, idx) => ({
-        ...shipment,
-        _id: shipment._id || `temp-shipment-${idx}`,
-        trackingNumber: shipment.trackingNumber || shipment.order?.orderNumber || `SHP-${idx}`,
-        status: (shipment.status || "pending").charAt(0).toUpperCase() + (shipment.status || "pending").slice(1),
-        eta: shipment.expectedDeliveryDate ? new Date(shipment.expectedDeliveryDate).toLocaleDateString() : "TBD",
-      }));
-      
-      // Normalize status to title case for display
-      const normalizedOrders = fetchedOrders.map((order, idx) => ({
-        ...order,
-        _id: order._id || `temp-${idx}`,
-        status: (order.status || "pending").charAt(0).toUpperCase() + (order.status || "pending").slice(1),
-        orderNumber: order.orderNumber || `ORD-${order._id?.substring(0, 8)}`,
-        purchaseOrderNumber: order.purchaseOrderNumber || "N/A",
-        totalAmount: order.totalAmount || 0,
-        date: order.createdAt || order.date || new Date().toISOString(),
-      }));
-      
-      setOrders(normalizedOrders);
-      setShipments(normalizedShipments);
+      setOrders(finalOrders.map(normalizeOrder));
+      setShipments(finalShipments.map(normalizeShipment));
+      console.log("[DIAG][Home] Shipments state updated with count", finalShipments.length);
+      if (DIAG_FRONTEND) console.log('[DIAG][Home] setShipments count:', Array.isArray(finalShipments) ? finalShipments.length : typeof finalShipments, finalShipments && finalShipments.slice ? finalShipments.slice(0,3) : finalShipments);
       setStats({
-        totalOrders: normalizedOrders.length,
-        pendingOrders: normalizedOrders.filter(o => o.status.toLowerCase() === "pending").length,
+        totalOrders: finalOrders.length,
+        pendingOrders: finalOrders.filter((o) => String(o.status || "").toLowerCase() === "pending").length,
       });
       setLastUpdate(new Date());
+
+      if (ordersResult.status === "rejected" && shipmentsResult.status === "rejected") {
+        const reason = ordersResult.reason || shipmentsResult.reason || new Error("Failed to load retailer dashboard data");
+        throw reason;
+      }
     } catch (err) {
-      console.error("Error fetching retailer orders:", err);
-      setOrders([]);
-      setStats({ totalOrders: 0, pendingOrders: 0 });
+      console.error("Error fetching retailer dashboard data:", err, err?.stack || 'no-stack');
+      const fallback = buildRetailerFallbackData();
+      setOrders(fallback.orders.map(normalizeOrder));
+      setShipments(fallback.shipments.map(normalizeShipment));
+      setStats({ totalOrders: fallback.orders.length, pendingOrders: 0 });
     } finally {
       setPageLoading(false);
     }
   }, [request]);
 
+  // Small floating debug panel to help diagnose missing-data issues in non-embedded browsers
+  // Log state changes for verification
   React.useEffect(() => {
+    console.log('[DIAG][Home.useEffect] orders length', Array.isArray(orders) ? orders.length : typeof orders, 'shipments length', Array.isArray(shipments) ? shipments.length : typeof shipments);
+    try {
+      console.log('[DIAG][Home.useEffect] sample shipments', Array.isArray(shipments) ? shipments.slice(0,3) : shipments);
+    } catch(e) {
+      console.warn('[DIAG][Home.useEffect] unable to show sample shipments', e);
+    }
+  }, [orders, shipments]);
+
+  // Ensure fetchData only runs once on mount even when React.StrictMode
+  // double-invokes effects in development. Use a ref guard to make the
+  // initial load idempotent and avoid duplicate network requests.
+  const didInitialFetchRef = React.useRef(false);
+  React.useEffect(() => {
+    if (didInitialFetchRef.current) return;
+    didInitialFetchRef.current = true;
     fetchData();
   }, [fetchData]);
 
-  // Poll for order updates and show lightweight toasts for important status changes
-  const prevOrdersRef = React.useRef(new Map());
   React.useEffect(() => {
-    const interval = setInterval(async () => {
+    const handleSimulationUpdated = () => {
+      fetchData();
+    };
+
+    window.addEventListener("simulation:updated", handleSimulationUpdated);
+    return () => window.removeEventListener("simulation:updated", handleSimulationUpdated);
+  }, [fetchData]);
+  // Poll for order updates and show lightweight toasts for important status changes
+  // Use refs to ensure only one interval runs and to prevent overlapping requests
+  const prevOrdersRef = React.useRef(new Map());
+  const pollingRef = React.useRef(null);
+  const isPollingFetchRef = React.useRef(false);
+
+  React.useEffect(() => {
+    // Clear any existing interval before creating a new one
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    const handler = async () => {
+      if (isPolling_fetch_check()) return; // guard wrapper
+      isPollingFetchRef.current = true;
       try {
         const response = await request('GET', '/api/users/retailer/orders?limit=50');
         let fetchedOrders = [];
@@ -336,10 +487,31 @@ export default function RetailerHome() {
         });
       } catch (e) {
         // ignore polling errors
+      } finally {
+        isPollingFetchRef.current = false;
       }
+    };
+
+    function isPolling_fetch_check() {
+      return isPollingFetchRef.current === true;
+    }
+
+    // Run handler first time after mount only if we didn't just run fetchData
+    if (!didInitialFetchRef.current) {
+      handler().catch(() => {});
+    }
+
+    // Start polling interval
+    pollingRef.current = setInterval(() => {
+      handler().catch(() => {});
     }, 15000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
   }, [request]);
 
   
@@ -392,6 +564,18 @@ export default function RetailerHome() {
 
     return { total, inTransit, delivered, delayed };
   }, [shipments]);
+
+  // Render-time diagnostic: print derived values so we can trace where arrays become empty
+  React.useEffect(() => {
+    try {
+      const shipmentsLength = Array.isArray(shipments) ? shipments.length : 0;
+      const recentLength = shipmentsLength; // currently we render all shipments in the list
+      const displayedLength = shipmentsLength; // direct mapping in JSX
+      console.log('[DIAG][Home.renderTrace]', { shipmentsLength, recentLength, displayedLength, shipmentStats });
+    } catch (e) {
+      console.warn('[DIAG][Home.renderTrace] error computing trace', e);
+    }
+  }, [shipments, shipmentStats]);
 
   const statCards = [
     {
@@ -487,6 +671,10 @@ export default function RetailerHome() {
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
+              <Sparkles className="w-4 h-4 text-violet-300" />
+              <span>{simulationEnabled ? "Simulation mode" : "Live mode"}</span>
+            </div>
             <motion.button
               whileHover={{ scale: 1.05, rotate: 180 }}
               whileTap={{ scale: 0.95 }}
@@ -517,6 +705,45 @@ export default function RetailerHome() {
             </motion.button>
           </div>
         </motion.div>
+
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4 text-sm text-violet-100 backdrop-blur-xl">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-semibold">Workflow controls</p>
+              <p className="text-violet-100/80">Use these actions to exercise the live retailer workflow and trigger the existing backend notifications.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSimulationEnabled((prev) => !prev)}
+                className="rounded-lg border border-violet-400/30 bg-slate-950/50 px-3 py-2 text-sm font-medium text-violet-100"
+              >
+                {simulationEnabled ? "Disable demo mode" : "Enable demo mode"}
+              </button>
+              <button
+                type="button"
+                onClick={addDemoOrderFlow}
+                className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100"
+              >
+                <span className="inline-flex items-center gap-2"><PlayCircle className="w-4 h-4" />Simulate order</span>
+              </button>
+              <button
+                type="button"
+                onClick={addDemoOrderFlow}
+                className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100"
+              >
+                <span className="inline-flex items-center gap-2"><Truck className="w-4 h-4" />Simulate Order</span>
+              </button>
+              <button
+                type="button"
+                onClick={resetSimulationData}
+                className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-white/80"
+              >
+                Reset demo state
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Alerts Modal */}
         <AnimatePresence>
@@ -744,53 +971,68 @@ export default function RetailerHome() {
               </h2>
             </div>
 
-            {shipments.length === 0 ? (
+            {(() => { console.log('[DIAG][RENDER] shipments:', shipments); console.log('[DIAG][RENDER] shipments length:', shipments?.length); return null; })()}
+            {(!localStorage.getItem('token')) ? (
+              <div className="py-8 text-center text-white/40">
+                You are not signed in. Please <button onClick={() => navigate('/login')} className="text-violet-300 underline">sign in</button> to view shipments.
+              </div>
+            ) : pageLoading ? (
+              <div className="py-8 text-center text-white/60">Loading shipments...</div>
+            ) : shipments.length === 0 ? (
               <div className="py-8 text-center text-white/40">No shipments found.</div>
             ) : (
-              <div className="space-y-4">
-                {shipments.map((shipment, idx) => (
-                  <div key={shipment._id || idx} className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm text-white/60">Tracking</p>
-                        <p className="font-semibold text-white">{shipment.trackingNumber}</p>
-                        <p className="text-sm text-white/50">ETA: {shipment.eta || "TBD"}</p>
+              (DIAG_RENDER ? (
+                <div className="space-y-4">
+                  {Array.isArray(shipments) ? shipments.map((s, i) => (
+                    <pre key={s._id || i} className="bg-white/5 p-4 rounded text-xs text-white/80 overflow-auto">{JSON.stringify(s, null, 2)}</pre>
+                  )) : (<div className="text-white/60">No shipments array available</div>)}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {shipments.map((shipment, idx) => (
+                    <div key={shipment._id || idx} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-white/60">Tracking</p>
+                          <p className="font-semibold text-white">{shipment.trackingNumber}</p>
+                          <p className="text-sm text-white/50">ETA: {shipment.eta || "TBD"}</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="px-3 py-1 rounded-full bg-slate-800 text-xs uppercase tracking-[0.12em] text-white/80">
+                            {shipment.status}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmShipment(shipment._id)}
+                            disabled={shipmentActionLoading === shipment._id || shipment.status === "Delivered" || shipment.status === "Quarantined"}
+                            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Verify Package
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTrackShipment(shipment)}
+                            disabled={trackLoading}
+                            className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {trackLoading ? "Loading..." : "Track Shipment"}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="px-3 py-1 rounded-full bg-slate-800 text-xs uppercase tracking-[0.12em] text-white/80">
-                          {shipment.status}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleConfirmShipment(shipment._id)}
-                          disabled={shipmentActionLoading === shipment._id || shipment.status === "Delivered" || shipment.status === "Quarantined"}
-                          className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Confirm Delivery
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setQuarantineModal({ show: true, shipmentId: shipment._id })}
-                          disabled={shipmentActionLoading === shipment._id || shipment.status === "Delivered" || shipment.status === "Quarantined"}
-                          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Quarantine
-                        </button>
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-white/70">
+                        <div>
+                          <p><span className="font-semibold text-white/80">Order</span>: {shipment.order?.orderNumber || "N/A"}</p>
+                          <p><span className="font-semibold text-white/80">Items</span>: {shipment.items?.length || 0}</p>
+                        </div>
+                        <div>
+                          <p><span className="font-semibold text-white/80">Value</span>: ₹{Number(shipment.totalAmount || 0).toFixed(2)}</p>
+                          <p><span className="font-semibold text-white/80">BLE ID</span>: {shipment.bleId || "Unavailable"}</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-white/70">
-                      <div>
-                        <p><span className="font-semibold text-white/80">Order</span>: {shipment.order?.orderNumber || "N/A"}</p>
-                        <p><span className="font-semibold text-white/80">Items</span>: {shipment.items?.length || 0}</p>
-                      </div>
-                      <div>
-                        <p><span className="font-semibold text-white/80">Value</span>: ₹{Number(shipment.totalAmount || 0).toFixed(2)}</p>
-                        <p><span className="font-semibold text-white/80">BLE ID</span>: {shipment.bleId || "Unavailable"}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ))
             )}
           </motion.div>
           <motion.div
@@ -852,13 +1094,50 @@ export default function RetailerHome() {
                   onClick={() => setIsOrderModalOpen(true)}
                   className="w-full py-2 px-4 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/50 rounded-lg text-violet-300 font-semibold text-sm transition-colors"
                 >
-                  New Order
+                  Place Order
                 </button>
-                <button className="w-full py-2 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 rounded-lg text-cyan-300 font-semibold text-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={addDemoOrderFlow}
+                  className="w-full py-2 px-4 bg-fuchsia-500/20 hover:bg-fuchsia-500/30 border border-fuchsia-500/50 rounded-lg text-fuchsia-300 font-semibold text-sm transition-colors"
+                >
+                  Simulate Order
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstShipment = shipments[0];
+                    if (firstShipment) {
+                      handleTrackShipment(firstShipment);
+                    }
+                  }}
+                  className="w-full py-2 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 rounded-lg text-cyan-300 font-semibold text-sm transition-colors"
+                >
                   Track Shipment
                 </button>
-                <button className="w-full py-2 px-4 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 rounded-lg text-emerald-300 font-semibold text-sm transition-colors">
-                  Export Report
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstShipment = shipments.find((item) => !["Delivered", "Quarantined"].includes(item.status));
+                    if (firstShipment) {
+                      handleConfirmShipment(firstShipment._id);
+                    }
+                  }}
+                  className="w-full py-2 px-4 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 rounded-lg text-emerald-300 font-semibold text-sm transition-colors"
+                >
+                  Verify Package
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstShipment = shipments.find((item) => !["Delivered", "Quarantined"].includes(item.status));
+                    if (firstShipment) {
+                      handleConfirmShipment(firstShipment._id);
+                    }
+                  }}
+                  className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white/80 font-semibold text-sm transition-colors"
+                >
+                  Confirm Delivery
                 </button>
               </div>
             </div>
@@ -1005,6 +1284,12 @@ export default function RetailerHome() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <ShipmentDetailsModal
+          isOpen={isTrackingModalOpen}
+          onClose={handleCloseTracking}
+          shipment={trackingShipment}
+        />
 
         {/* Create Order Modal */}
         <AnimatePresence>

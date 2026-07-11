@@ -2,9 +2,10 @@ import OrderModel from '../models/OrderModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import DrugModel from '../models/Drug.js';
 import UserModel from '../models/UserModel.js';
-import { sendOrderWorkflowNotification } from '../services/notification.service.js';
+import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from '../services/notification.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { validateArray, validateRequired } from '../utils/validation.js';
+import { createAuditEntry } from '../services/audit.service.js';
 
 // Get all orders with filtering and pagination
 const getAllOrders = async (req, res) => {
@@ -129,12 +130,48 @@ const createOrder = async (req, res) => {
     }
     
     const order = await OrderModel.create(orderData);
+    await createAuditEntry({
+      eventType: 'order_created',
+      order,
+      user: req.user?._id || req.user?.id || null,
+      organization: req.user?.organization || null,
+      previousStatus: null,
+      newStatus: order.status,
+      description: 'Order created successfully.',
+      metadata: { orderNumber: order.orderNumber }
+    });
     
     // Populate the created order
     await order.populate([
       { path: 'supplier', select: 'name email contactPerson' },
       { path: 'items.drug', select: 'name genericName' }
     ]);
+
+    try {
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        retailerUserId: order.createdBy || order.user || req.user?._id || req.user?.id,
+        retailerUser: await UserModel.findById(order.createdBy || order.user || req.user?._id || req.user?.id).select('email name role'),
+        includeRetailer: false,
+        includeWarehouse: true,
+        includeAdmin: false,
+        eventType: 'order_created',
+      });
+
+      if (recipientEmails.length) {
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: 'order_created',
+          orderNumber: order.orderNumber,
+          medicine: order.items?.[0]?.drug?.name || 'Item',
+          quantity: order.items?.[0]?.quantity || 0,
+          totalAmount: order.totalAmount || 0,
+          status: 'CREATED',
+          nextStep: 'Warehouse will review and process the order.'
+        });
+      }
+    } catch (notificationError) {
+      console.warn('Order creation notification skipped:', notificationError.message);
+    }
     
     return successResponse(res, 201, 'Order created successfully', order);
   } catch (error) {
@@ -173,6 +210,8 @@ const updateOrderStatus = async (req, res) => {
       return errorResponse(res, 404, 'Order not found');
     }
     
+    const previousStatus = order.status;
+
     // Update status
     order.status = status;
     
@@ -202,6 +241,30 @@ const updateOrderStatus = async (req, res) => {
     });
     
     await order.save();
+
+    if (status === 'confirmed') {
+      await createAuditEntry({
+        eventType: 'order_confirmed',
+        order,
+        user: req.user?._id || req.user?.id || null,
+        organization: req.user?.organization || null,
+        previousStatus,
+        newStatus: status,
+        description: 'Order confirmed for shipment workflow.',
+        metadata: { notes }
+      });
+    } else if (status === 'cancelled' || status === 'rejected') {
+      await createAuditEntry({
+        eventType: 'order_rejected',
+        order,
+        user: req.user?._id || req.user?.id || null,
+        organization: req.user?.organization || null,
+        previousStatus,
+        newStatus: status,
+        description: 'Order rejected or cancelled.',
+        metadata: { notes }
+      });
+    }
     
     // Populate before sending response
     await order.populate([
@@ -209,20 +272,46 @@ const updateOrderStatus = async (req, res) => {
       { path: 'approvedBy', select: 'name email' }
     ]);
 
-    // Send email + push notifications for key status changes (retailer)
+    // Send email notifications for key status changes
     try {
-      const retailer = await UserModel.findById(order.createdBy).select('email name');
-      const recipientEmail = retailer?.email;
-      if (recipientEmail && ['confirmed', 'shipped', 'delivered'].includes(status)) {
+      const eventTypeMap = {
+        approved: 'order_approved',
+        confirmed: 'order_confirmed',
+        shipped: 'shipment_dispatched',
+        delivered: 'shipment_delivered',
+        rejected: 'order_rejected',
+        cancelled: 'order_rejected'
+      };
+
+      const effectiveEventType = eventTypeMap[status];
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        retailerUserId: order.createdBy || order.user || req.user?._id || req.user?.id,
+        retailerUser: await UserModel.findById(order.createdBy || order.user || req.user?._id || req.user?.id).select('email name role'),
+        includeRetailer: ['order_approved', 'order_confirmed', 'order_rejected', 'shipment_dispatched'].includes(effectiveEventType),
+        includeWarehouse: effectiveEventType === 'shipment_delivered',
+        includeAdmin: effectiveEventType === 'shipment_delivered',
+        eventType: effectiveEventType,
+      });
+
+      if (recipientEmails.length && eventTypeMap[status]) {
         const item = order.items?.[0] || {};
-        await sendOrderWorkflowNotification({
-          recipientEmail,
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: eventTypeMap[status],
           orderNumber: order.orderNumber,
           medicine: item.drug?.name || item.drug || 'Item',
           quantity: item.quantity || 0,
           totalAmount: order.totalAmount || 0,
           status: status.toUpperCase(),
-          nextStep: status === 'confirmed' ? 'Warehouse will prepare and dispatch the order.' : (status === 'shipped' ? 'Order is on the way.' : 'Order has been delivered.')
+          nextStep: status === 'approved'
+            ? 'The order has been approved and will move to fulfillment.'
+            : status === 'confirmed'
+              ? 'Warehouse will prepare and dispatch the order.'
+              : status === 'shipped'
+                ? 'Order is on the way.'
+                : status === 'delivered'
+                  ? 'Order has been delivered.'
+                  : 'Please review the latest order update.'
         });
       }
     } catch (e) {

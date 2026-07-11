@@ -67,24 +67,12 @@ export default function Drugs() {
       if (response?.success) {
         setDrugs(response.drugs || []);
         setTotalPages(Math.ceil((response.total || 0) / 10));
-        
-        // DEBUG: Log first drug to see structure
-        if (response.drugs && response.drugs.length > 0) {
-          console.log("Sample drug data:", response.drugs[0]);
-          console.log("Available fields:", Object.keys(response.drugs[0]));
-        }
       } else if (response?.drugs) {
         // Handle case where response doesn't have success flag
         setDrugs(response.drugs || []);
         setTotalPages(
           Math.ceil((response.total || response.drugs.length) / 10)
         );
-        
-        // DEBUG: Log first drug to see structure
-        if (response.drugs && response.drugs.length > 0) {
-          console.log("Sample drug data:", response.drugs[0]);
-          console.log("Available fields:", Object.keys(response.drugs[0]));
-        }
       } else {
         // no data - clear
         setDrugs([]);

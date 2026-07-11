@@ -4,7 +4,9 @@ import Inventory from "../models/Inventory.js";
 import Shipment from "../models/ShipmentModel.js";
 import Order from "../models/OrderModel.js";
 import Scanlog from "../models/ScanlogModel.js";
+import UserModel from "../models/UserModel.js";
 import { successResponse, errorResponse } from "../utils/response.js";
+import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from "../services/notification.service.js";
 
 const buildComplianceQuery = (queryParams = {}) => {
   const query = {};
@@ -114,6 +116,35 @@ export const createReport = async (req, res) => {
     }
 
     const report = await Compliance.create(payload);
+
+    try {
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        retailerUserId: payload.createdBy || null,
+        retailerUser: payload.createdBy ? await UserModel.findById(payload.createdBy).select("email name role") : null,
+        includeRetailer: false,
+        includeWarehouse: false,
+        includeAdmin: true,
+        eventType: "compliance_event",
+      });
+
+      if (recipientEmails.length) {
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: "compliance_event",
+          orderNumber: payload.relatedOrder?.toString?.() || report.reportNumber || "Compliance",
+          shipmentNumber: payload.relatedShipment?.toString?.() || report.reportNumber || "Compliance",
+          medicine: payload.relatedDrug?.toString?.() || "Compliance record",
+          quantity: 1,
+          totalAmount: 0,
+          status: report.status.toUpperCase(),
+          nextStep: "Investigate the compliance event and assign follow-up actions.",
+          details: report.title || report.description || "Compliance alert created."
+        });
+      }
+    } catch (notificationError) {
+      console.warn("Compliance notification skipped:", notificationError.message);
+    }
+
     return successResponse(res, 201, "Compliance report created successfully", report);
   } catch (error) {
     return errorResponse(res, 500, "Failed to create compliance report", error.message);

@@ -34,7 +34,11 @@ mongoose.connect(process.env.MONGO_URI).then(async () => {
       });
       console.log('✅ Admin user created:', user.email);
     } else {
-      console.log('ℹ️ Admin user already exists:', user.email);
+      // Update existing user's password and ensure role is ADMIN
+      user.password = password; // will be hashed by pre-save hook
+      user.role = 'ADMIN';
+      await user.save();
+      console.log('🔁 Admin user updated with new password:', user.email);
     }
     
     process.exit(0);

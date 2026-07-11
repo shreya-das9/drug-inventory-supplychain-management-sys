@@ -139,11 +139,13 @@ async function seedTestData() {
     for (let i = 1; i <= 2; i++) {
       await Scanlog.create({
         bleId: `BLE-DEVICE-${5000 + i}`,
-        stage: "DISTRIBUTOR_TO_WAREHOUSE",
+        // Use allowed enum values from ScanlogModel: manufacturer|distributor|warehouse|pharmacy|customer
+        stage: "distributor",
         scannedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
         alertCodes: ["TRANSIT_TIME_EXCEEDED"],
         location: `Route ${i}`,
-        verificationStatus: "PENDING",
+        // Allowed verificationStatus: VERIFIED, BLOCKED, FAILED
+        verificationStatus: "VERIFIED",
         details: {
           test: true,
           transitDelay: {

@@ -9,7 +9,8 @@ import {
   ShieldAlert,
   Clock3,
   Search,
-  Truck
+  Truck,
+  Sparkles,
 } from "lucide-react";
 
 const TABS = [
@@ -28,6 +29,7 @@ export default function Alerts() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [notificationToast, setNotificationToast] = useState(null);
+  const [simulationEnabled, setSimulationEnabled] = useState(true);
   const prevEscalationsRef = useRef(new Set());
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -44,6 +46,45 @@ export default function Alerts() {
   const fetchComplianceReports = async () => {
     const res = await request("GET", "/api/compliance?limit=25");
     return res?.data?.reports || [];
+  };
+
+  const emitSimulationSync = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("simulation:updated"));
+    }
+  };
+
+  const injectDemoAdminFlow = async () => {
+    try {
+      await request("POST", "/api/users/simulation/demo-flow", {
+        medicine: "Demo Oncology Pack",
+        quantity: 6,
+        totalAmount: 450,
+        purchaseOrderNumber: `ADM-DEMO-${Date.now()}`,
+      });
+      await refreshData(false);
+      emitSimulationSync();
+      setNotificationToast({ message: "Admin demo alerts synced from backend", type: "info" });
+      setTimeout(() => setNotificationToast(null), 4000);
+    } catch (error) {
+      console.error("Failed to create admin demo flow", error);
+      setNotificationToast({ message: error.message || "Failed to create admin demo flow", type: "error" });
+      setTimeout(() => setNotificationToast(null), 4000);
+    }
+  };
+
+  const resetSimulationState = async () => {
+    try {
+      await request("POST", "/api/users/simulation/reset");
+      await refreshData(false);
+      emitSimulationSync();
+      setNotificationToast({ message: "Admin demo data cleared", type: "info" });
+      setTimeout(() => setNotificationToast(null), 4000);
+    } catch (error) {
+      console.error("Failed to reset admin demo flow", error);
+      setNotificationToast({ message: error.message || "Failed to reset admin demo data", type: "error" });
+      setTimeout(() => setNotificationToast(null), 4000);
+    }
   };
 
   const refreshData = async (showRefresh = true) => {
@@ -81,6 +122,15 @@ export default function Alerts() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const handleSimulationUpdated = () => {
+      refreshData(false);
+    };
+
+    window.addEventListener("simulation:updated", handleSimulationUpdated);
+    return () => window.removeEventListener("simulation:updated", handleSimulationUpdated);
+  }, []);
+
   const filteredBleLogs = bleLogs.filter((log) => {
     if (!searchTerm.trim()) return true;
     const q = searchTerm.toLowerCase();
@@ -106,6 +156,10 @@ export default function Alerts() {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-sm text-violet-100">
+            <Sparkles size={16} />
+            {simulationEnabled ? "Simulation mode" : "Live mode"}
+          </div>
           <button
             onClick={() => refreshData(true)}
             disabled={isRefreshing}
@@ -115,6 +169,38 @@ export default function Alerts() {
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
           <div className="text-sm text-slate-400">Updated: {lastUpdate.toLocaleTimeString()}</div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4 text-sm text-violet-100">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-semibold">Admin demo controls</p>
+            <p className="text-violet-100/80">Preview escalation, BLE, and compliance scenarios in the admin view without changing the backend.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSimulationEnabled((prev) => !prev)}
+              className="rounded-lg border border-violet-400/30 bg-slate-950/50 px-3 py-2 text-sm font-medium text-violet-100"
+            >
+              {simulationEnabled ? "Disable demo mode" : "Enable demo mode"}
+            </button>
+            <button
+              type="button"
+              onClick={injectDemoAdminFlow}
+              className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100"
+            >
+              Simulate admin alerts
+            </button>
+            <button
+              type="button"
+              onClick={resetSimulationState}
+              className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-white/80"
+            >
+              Reset demo state
+            </button>
+          </div>
         </div>
       </div>
 

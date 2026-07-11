@@ -92,7 +92,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { login } from "../../services/auth.api";
+import { login } from "../../controllers/Login.controller";
 
 import logo from "../../assets/logo.png";
 
@@ -109,21 +109,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    try {
-      const { data } = await login(form);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("role", data.user.role);
-
-      if (data.user.role === "ADMIN") navigate("/admin/dashboard");
-      else if (data.user.role === "WAREHOUSE") navigate("/warehouse/dashboard");
-      else if (data.user.role === "RETAILER") navigate("/retailer/home");
-      else navigate("/unauthorized");
-    } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
-    } finally {
-      setIsLoading(false);
-    }
+    await login(form, navigate, setError, setIsLoading);
   };
 
   // Typing animation for dynamic text

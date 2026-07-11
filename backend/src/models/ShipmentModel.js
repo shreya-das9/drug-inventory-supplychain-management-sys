@@ -37,7 +37,7 @@ const shipmentSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled', 'quarantined'],
+    enum: ['pending', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled', 'quarantined', 'under_review', 'investigation_required'],
     default: 'pending'
   },
   origin: {
@@ -86,6 +86,41 @@ const shipmentSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  currentCheckpoint: {
+    type: String,
+    default: null
+  },
+  currentResponsibleOrganization: {
+    type: String,
+    default: null
+  },
+  nextExpectedCheckpoint: {
+    type: String,
+    default: null
+  },
+  expectedCheckpointDeadline: {
+    type: Date,
+    default: null
+  },
+  delayDurationMinutes: {
+    type: Number,
+    default: 0
+  },
+  lastScanAt: {
+    type: Date,
+    default: null
+  },
+  timeline: [{
+    timestamp: { type: Date, default: Date.now },
+    checkpoint: String,
+    operator: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    organization: String,
+    status: String
+  }],
   statusHistory: [{
     status: String,
     timestamp: { type: Date, default: Date.now },

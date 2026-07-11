@@ -16,7 +16,9 @@ export const verifyToken = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = {
       ...decoded,
-      _id: decoded._id || decoded.id
+      id: decoded.id || decoded._id,
+      _id: decoded._id || decoded.id,
+      role: String(decoded.role || "").toUpperCase(),
     };
 
     next();
@@ -50,7 +52,9 @@ export const verifyBleIngestionToken = (req, res, next) => {
     const decoded = jwt.verify(bearerToken, process.env.JWT_SECRET);
     req.user = {
       ...decoded,
-      _id: decoded._id || decoded.id
+      id: decoded.id || decoded._id,
+      _id: decoded._id || decoded.id,
+      role: String(decoded.role || "").toUpperCase(),
     };
     next();
   } catch (error) {

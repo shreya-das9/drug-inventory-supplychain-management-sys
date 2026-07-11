@@ -1,7 +1,10 @@
 import ShipmentModel from '../models/ShipmentModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import Drug from '../models/Drug.js';
+import UserModel from '../models/UserModel.js';
 import { validateArray } from '../utils/validation.js';
+import { createAuditEntry } from '../services/audit.service.js';
+import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from '../services/notification.service.js';
 
 // Get all shipments
 const getAllShipments = async (req, res) => {
@@ -156,6 +159,30 @@ const createShipment = async (req, res) => {
     };
     
     const shipment = await ShipmentModel.create(shipmentData);
+    await createAuditEntry({
+      eventType: 'shipment_created',
+      shipment,
+      order: shipment.order || null,
+      blePackageId: shipment.bleId || null,
+      user: req.user?.id || req.user?._id || null,
+      organization: req.user?.organization || null,
+      previousStatus: null,
+      newStatus: shipment.status,
+      description: 'Shipment created successfully.',
+      metadata: { trackingNumber: shipment.trackingNumber }
+    });
+    await createAuditEntry({
+      eventType: 'inventory_verified',
+      shipment,
+      order: shipment.order || null,
+      blePackageId: shipment.bleId || null,
+      user: req.user?.id || req.user?._id || null,
+      organization: req.user?.organization || null,
+      previousStatus: null,
+      newStatus: shipment.status,
+      description: 'Inventory verification completed for the shipment workflow.',
+      metadata: { trackingNumber: shipment.trackingNumber }
+    });
     
     // Update supplier's total orders
     supplierDoc.totalOrders = (supplierDoc.totalOrders || 0) + 1;
@@ -269,6 +296,58 @@ const updateShipmentStatus = async (req, res) => {
     });
     
     await shipment.save();
+
+    if (status.toLowerCase() === 'shipped') {
+      await createAuditEntry({
+        eventType: 'shipment_dispatched',
+        shipment,
+        user: req.user?.id || req.user?._id || null,
+        organization: req.user?.organization || null,
+        previousStatus: oldStatus,
+        newStatus: shipment.status,
+        description: 'Shipment marked as dispatched.',
+        metadata: { notes }
+      });
+    } else if (status.toLowerCase() === 'delivered') {
+      await createAuditEntry({
+        eventType: 'shipment_delivered',
+        shipment,
+        user: req.user?.id || req.user?._id || null,
+        organization: req.user?.organization || null,
+        previousStatus: oldStatus,
+        newStatus: shipment.status,
+        description: 'Shipment marked as delivered.',
+        metadata: { notes }
+      });
+    }
+
+    try {
+      const newStatusLower = shipment.status.toLowerCase();
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        retailerUserId: shipment.createdBy || shipment.order?.user || shipment.order || req.user?._id || req.user?.id,
+        retailerUser: await UserModel.findById(shipment.createdBy || shipment.order?.user || shipment.order || req.user?._id || req.user?.id).select('email name role'),
+        includeRetailer: newStatusLower === 'shipped' || newStatusLower === 'delivered',
+        includeWarehouse: newStatusLower === 'delivered',
+        includeAdmin: newStatusLower === 'delivered',
+        eventType: newStatusLower === 'shipped' ? 'shipment_dispatched' : 'shipment_delivered',
+      });
+
+      if (recipientEmails.length && ['shipped', 'delivered'].includes(newStatusLower)) {
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: newStatusLower === 'shipped' ? 'shipment_dispatched' : 'shipment_delivered',
+          orderNumber: shipment.order?.toString?.() || shipment.trackingNumber || 'Shipment',
+          shipmentNumber: shipment.trackingNumber || shipment.bleId || 'Shipment',
+          medicine: shipment.items?.[0]?.drug?.name || 'Shipment item',
+          quantity: shipment.items?.[0]?.quantity || 0,
+          totalAmount: shipment.totalAmount || 0,
+          status: shipment.status.toUpperCase(),
+          nextStep: newStatusLower === 'shipped' ? 'The shipment is en route and will be tracked through the next checkpoints.' : 'The shipment has reached its final delivery point.'
+        });
+      }
+    } catch (notificationError) {
+      console.warn('Shipment notification skipped:', notificationError.message);
+    }
     
     return res.status(200).json({
       success: true,

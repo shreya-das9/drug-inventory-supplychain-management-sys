@@ -5,6 +5,7 @@ import Order from "../../models/OrderModel.js";
 import Scanlog from "../../models/ScanlogModel.js";
 import Supplier from "../../models/SupplierModel.js";
 import Shipment from "../../models/ShipmentModel.js";
+import Compliance from "../../models/ComplianceModel.js";
 import { validateArray, validateExpiryAlert, validateLowStockAlert, validateRequired } from "../../utils/validation.js";
 
 export const getStats = async (req, res) => {
@@ -46,7 +47,7 @@ export const getAlerts = async (req, res) => {
     const today = new Date();
     const nextMonth = new Date(today.setMonth(today.getMonth() + 1));
 
-    const [expiryAlerts, lowStockAlerts, securityTransitAlertsRaw, incomingOrdersRaw] = await Promise.all([
+    const [expiryAlerts, lowStockAlerts, securityTransitAlertsRaw, delayComplianceAlertsRaw, incomingOrdersRaw] = await Promise.all([
       Drug.find({
         expiryDate: { $lte: nextMonth, $gte: new Date() },
       }).select("name batchNumber expiryDate"),
@@ -57,6 +58,10 @@ export const getAlerts = async (req, res) => {
         .sort({ scannedAt: -1 })
         .limit(50)
         .select("bleId stage scannedAt alertCodes location details verificationStatus"),
+      Compliance.find({ 'metadata.alertType': 'transit_delay' })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .select("title description severity status relatedShipment metadata createdAt"),
       Order.find({
         $or: [
           { status: { $in: ["pending", "confirmed"] } },
@@ -69,21 +74,34 @@ export const getAlerts = async (req, res) => {
         .populate("createdBy", "name email role")
     ]);
 
-    const securityTransitAlerts = securityTransitAlertsRaw.map((log) => ({
-      id: log._id,
-      bleId: log.bleId,
-      stage: log.stage,
-      scannedAt: log.scannedAt,
-      verificationStatus: log.verificationStatus,
-      alertCodes: log.alertCodes,
-      location: log.location,
-      route: log.details?.transitDelay?.routeKey || null,
-      elapsedMinutes: log.details?.transitDelay?.elapsedMinutes ?? null,
-      allowedMinutes: log.details?.transitDelay?.allowedMinutes ?? null,
-      trafficCondition: log.details?.transitDelay?.trafficCondition || null,
-      delayReason: log.details?.transitDelay?.delayReason || null,
-      delayReasonAccepted: Boolean(log.details?.transitDelay?.delayReasonAccepted)
-    }));
+    const securityTransitAlerts = [
+      ...securityTransitAlertsRaw.map((log) => ({
+        id: log._id,
+        bleId: log.bleId,
+        stage: log.stage,
+        scannedAt: log.scannedAt,
+        verificationStatus: log.verificationStatus,
+        alertCodes: log.alertCodes,
+        location: log.location,
+        route: log.details?.transitDelay?.routeKey || null,
+        elapsedMinutes: log.details?.transitDelay?.elapsedMinutes ?? null,
+        allowedMinutes: log.details?.transitDelay?.allowedMinutes ?? null,
+        trafficCondition: log.details?.transitDelay?.trafficCondition || null,
+        delayReason: log.details?.transitDelay?.delayReason || null,
+        delayReasonAccepted: Boolean(log.details?.transitDelay?.delayReasonAccepted)
+      })),
+      ...delayComplianceAlertsRaw.map((alert) => ({
+        id: alert._id,
+        alertType: 'transit_delay',
+        title: alert.title,
+        description: alert.description,
+        severity: alert.severity,
+        status: alert.status,
+        relatedShipment: alert.relatedShipment,
+        createdAt: alert.createdAt,
+        metadata: alert.metadata || {}
+      }))
+    ];
 
     // Transform expiryAlerts to map batchNumber to batchNo for frontend consistency
     const formattedExpiryAlerts = expiryAlerts.map(alert => {

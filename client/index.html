@@ -2,9 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Ensure React Refresh globals exist early to avoid plugin detection errors
+      window.$RefreshReg$ = window.$RefreshReg$ || (() => {});
+      window.$RefreshSig$ = window.$RefreshSig$ || (() => (type) => type);
+    </script>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drug Inventory</title>
+    <script>
+      // Runtime API base override to ensure frontend talks to local backend.
+      // Set to current backend port to avoid localhost IPv4/IPv6 and port mismatches.
+      //window.__API_BASE__ = window.__API_BASE__ || 'http://127.0.0.1:5000';
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -72,10 +72,16 @@ export default function Shipments() {
         : `/admin/shipments?status=${statusFilter}&page=${currentPage}&limit=${itemsPerPage}`;
       
       const response = await api.get(url);
-      
-      setShipments(response.data.data || []);
-      setTotalPages(response.data.pagination?.totalPages || 1);
-      setTotalItems(response.data.pagination?.totalItems || 0);
+      const payload = response.data || {};
+      const shipmentsData = Array.isArray(payload.data)
+        ? payload.data
+        : Array.isArray(payload)
+        ? payload
+        : [];
+
+      setShipments(shipmentsData);
+      setTotalPages(payload.pagination?.totalPages || 1);
+      setTotalItems(payload.pagination?.totalItems || 0);
       setLastUpdate(new Date());
     } catch (error) {
       console.error("Error fetching shipments:", error);
@@ -88,7 +94,7 @@ export default function Shipments() {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get("/admin/shipments/stats");
-      setStats(response.data.data);
+      setStats(response.data?.data || response.data || {});
     } catch (error) {
       console.error("Error fetching stats:", error);
     }

@@ -1,12 +1,15 @@
 import express from "express";
+import mongoose from "mongoose";
 import User from "../models/UserModel.js";
 import ShipmentModel from "../models/ShipmentModel.js";
-import Compliance from "../models/ComplianceModel.js";
+import ComplianceModel from "../models/ComplianceModel.js";
 import { verifyToken, isAdmin } from "../middleware/auth.middleware.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { createRetailerOrderWorkflow } from "../services/retailerOrderWorkflow.service.js";
 import { sendOrderWorkflowNotification } from "../services/notification.service.js";
 import OrderModel from "../models/OrderModel.js";
+import InventoryModel from "../models/Inventory.js";
+import DrugModel from "../models/Drug.js";
 
 const router = express.Router();
 
@@ -14,7 +17,8 @@ router.use(verifyToken);
 
 router.get("/me", async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password -resetToken -resetTokenExpiry");
+    const userId = req.user._id || req.user.id;
+    const user = await User.findById(userId).select("-password -resetToken -resetTokenExpiry");
     if (!user) {
       return errorResponse(res, 404, "User not found");
     }
@@ -27,6 +31,7 @@ router.get("/me", async (req, res) => {
 
 router.patch("/me", async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const allowedFields = ["name", "email", "password"];
     const updates = {};
 
@@ -36,7 +41,7 @@ router.patch("/me", async (req, res) => {
       }
     }
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, 404, "User not found");
     }
@@ -105,7 +110,8 @@ router.get("/retailer/orders", async (req, res) => {
     const { page = 1, limit = 10, status = "" } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const query = { user: req.user._id || req.user.id };
+    const userId = req.user._id || req.user.id;
+    const query = { user: userId };
     if (status) {
       query.status = status.toLowerCase();
     }
@@ -152,7 +158,8 @@ router.patch("/retailer/orders/:id/cancel", async (req, res) => {
     }
 
     // Verify order belongs to retailer
-    if (order.user.toString() !== req.user._id.toString() && order.user.toString() !== req.user.id.toString()) {
+    const userId = req.user._id || req.user.id;
+    if (order.user.toString() !== String(userId)) {
       return errorResponse(res, 403, "You can only cancel your own orders");
     }
 
@@ -203,7 +210,8 @@ router.delete("/retailer/orders/:id", async (req, res) => {
     }
 
     // Verify order belongs to retailer
-    if (order.user.toString() !== req.user._id.toString() && order.user.toString() !== req.user.id.toString()) {
+    const userId = req.user._id || req.user.id;
+    if (order.user.toString() !== String(userId)) {
       return errorResponse(res, 403, "You can only delete your own orders");
     }
 
@@ -229,7 +237,8 @@ router.get("/retailer/shipments", async (req, res) => {
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
 
-    const retailerOrders = await OrderModel.find({ user: req.user._id }).select("_id");
+    const userId = req.user._id || req.user.id;
+    const retailerOrders = await OrderModel.find({ user: userId }).select("_id");
     const orderIds = retailerOrders.map((order) => order._id);
 
     const shipments = await ShipmentModel.find({ order: { $in: orderIds } })
@@ -241,6 +250,150 @@ router.get("/retailer/shipments", async (req, res) => {
   } catch (error) {
     console.error("Get retailer shipments error:", error);
     return errorResponse(res, 500, "Failed to fetch retailer shipments", error.message);
+  }
+});
+
+// Get retailer shipment details
+router.get("/retailer/shipments/:id", async (req, res) => {
+  try {
+    const role = String(req.user?.role || "").toUpperCase();
+    if (role !== "RETAILER") {
+      return errorResponse(res, 403, "Access denied. Retailer role required.");
+    }
+
+    const { id } = req.params;
+    const shipment = await ShipmentModel.findById(id)
+      .populate("order", "orderNumber user status")
+      .populate("items.drug", "name genericName manufacturer")
+      .populate("supplier", "name contactPerson email phone")
+      .populate("timeline.operator", "name email role")
+      .populate("statusHistory.updatedBy", "name email role");
+
+    if (!shipment) {
+      return errorResponse(res, 404, "Shipment not found");
+    }
+
+    const userId = req.user._id || req.user.id;
+    if (!shipment.order || String(shipment.order.user) !== String(userId)) {
+      return errorResponse(res, 403, "You can only view your own shipments.");
+    }
+
+    return successResponse(res, 200, "Shipment details fetched successfully", { shipment });
+  } catch (error) {
+    console.error("Get retailer shipment details error:", error);
+    return errorResponse(res, 500, "Failed to fetch shipment details", error.message);
+  }
+});
+
+router.post("/simulation/demo-flow", async (req, res) => {
+  try {
+    const role = String(req.user?.role || "").toUpperCase();
+    const allowedRoles = new Set(["RETAILER", "WAREHOUSE", "WAREHOUSE_ADMIN", "ADMIN"]);
+    if (!allowedRoles.has(role)) {
+      return errorResponse(res, 403, "Access denied. Retailer or warehouse/admin role required.");
+    }
+
+    const userId = req.user._id || req.user.id;
+    const medicineName = req.body?.medicine || "Demo Antibiotic";
+    const quantity = Number(req.body?.quantity ?? 24);
+    const totalAmount = Number(req.body?.totalAmount ?? 1250);
+    const purchaseOrderNumber = req.body?.purchaseOrderNumber || `SIM-${Date.now()}`;
+
+    let drug = await DrugModel.findOne({ name: { $regex: new RegExp(`^${medicineName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } });
+    if (!drug) {
+      drug = await DrugModel.create({
+        name: medicineName,
+        batchNumber: `SIM-${Date.now()}`,
+        price: totalAmount / Math.max(quantity, 1),
+        description: "Auto-created for simulation demo flow",
+        createdBy: userId,
+      });
+    }
+
+    const existingInventory = await InventoryModel.findOne({ drug: drug._id });
+    if (existingInventory) {
+      existingInventory.quantity = Math.max(Number(existingInventory.quantity || 0) + Math.max(quantity, 24), quantity + 24);
+      existingInventory.warehouseLocation = existingInventory.warehouseLocation || "Zone A";
+      await existingInventory.save();
+    } else {
+      await InventoryModel.create({
+        drug: drug._id,
+        quantity: Math.max(60, quantity + 24),
+        warehouseLocation: "Zone A",
+        threshold: 10,
+      });
+    }
+
+    const workflowResult = await createRetailerOrderWorkflow({
+      user: req.user,
+      medicine: medicineName,
+      quantity,
+      totalAmount,
+      purchaseOrderNumber,
+    });
+
+    const order = await OrderModel.findById(workflowResult.order._id);
+    if (!order) {
+      throw new Error("Simulation order was not persisted");
+    }
+
+    const shipment = await ShipmentModel.create({
+      trackingNumber: `SIM-${Date.now()}`,
+      supplier: new mongoose.Types.ObjectId(),
+      order: order._id,
+      items: [{ drug: drug._id, quantity, unitPrice: totalAmount / Math.max(quantity, 1), batchNumber: drug.batchNumber, expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) }],
+      totalAmount,
+      expectedDeliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      status: "processing",
+      currentCheckpoint: "warehouse_received",
+      currentResponsibleOrganization: "warehouse",
+      createdBy: userId,
+      statusHistory: [{ status: "processing", timestamp: new Date(), updatedBy: userId, notes: "Demo flow created shipment" }],
+    });
+
+    await ComplianceModel.create({
+      title: `Simulation review for ${order.orderNumber}`,
+      description: "Demo workflow created a persisted order and shipment for frontend walkthroughs.",
+      findings: ["Simulation mode enabled"],
+      recommendations: ["Review order and shipment status in dashboards"],
+      severity: "medium",
+      status: "in_review",
+      relatedOrder: order._id,
+      relatedShipment: shipment._id,
+      metadata: { source: "simulation-demo-flow" },
+      createdBy: userId,
+      updatedBy: userId,
+    });
+
+    return successResponse(res, 201, "Simulation demo flow created", { orderId: order._id, shipmentId: shipment._id });
+  } catch (error) {
+    console.error("Simulation demo flow error:", error);
+    return errorResponse(res, 500, "Failed to create simulation demo flow", error.message);
+  }
+});
+
+router.post("/simulation/reset", async (req, res) => {
+  try {
+    const role = String(req.user?.role || "").toUpperCase();
+    const allowedRoles = new Set(["RETAILER", "WAREHOUSE", "WAREHOUSE_ADMIN", "ADMIN"]);
+    if (!allowedRoles.has(role)) {
+      return errorResponse(res, 403, "Access denied. Retailer or warehouse/admin role required.");
+    }
+
+    const userId = req.user._id || req.user.id;
+    const orders = await OrderModel.find({ user: userId, $or: [{ notes: /simulation/i }, { purchaseOrderNumber: /^SIM-/i }] });
+    const orderIds = orders.map((order) => order._id);
+
+    await Promise.all([
+      ShipmentModel.deleteMany({ order: { $in: orderIds } }),
+      ComplianceModel.deleteMany({ relatedOrder: { $in: orderIds } }),
+      OrderModel.deleteMany({ _id: { $in: orderIds } }),
+    ]);
+
+    return successResponse(res, 200, "Simulation demo data reset", { deletedOrders: orderIds.length });
+  } catch (error) {
+    console.error("Simulation reset error:", error);
+    return errorResponse(res, 500, "Failed to reset simulation demo data", error.message);
   }
 });
 
@@ -259,7 +412,8 @@ router.patch("/retailer/shipments/:id/confirm", async (req, res) => {
       return errorResponse(res, 404, "Shipment not found");
     }
 
-    if (!shipment.order || String(shipment.order.user) !== String(req.user._id || req.user.id)) {
+    const userId = req.user._id || req.user.id;
+    if (!shipment.order || String(shipment.order.user) !== String(userId)) {
       return errorResponse(res, 403, "You can only confirm deliveries for your own shipments.");
     }
 
@@ -316,7 +470,8 @@ router.patch("/retailer/shipments/:id/quarantine", async (req, res) => {
       return errorResponse(res, 404, "Shipment not found");
     }
 
-    if (!shipment.order || String(shipment.order.user) !== String(req.user._id || req.user.id)) {
+    const userId = req.user._id || req.user.id;
+    if (!shipment.order || String(shipment.order.user) !== String(userId)) {
       return errorResponse(res, 403, "You can only quarantine your own shipments.");
     }
 
