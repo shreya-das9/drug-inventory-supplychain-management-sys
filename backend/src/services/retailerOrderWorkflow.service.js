@@ -3,7 +3,8 @@ import Inventory from "../models/Inventory.js";
 import Order from "../models/OrderModel.js";
 import User from "../models/UserModel.js";
 import {
-  sendOrderWorkflowNotification,
+  resolveWorkflowRecipientEmails,
+  sendWorkflowEventNotifications,
 } from "./notification.service.js";
 
 const escapeRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -21,6 +22,7 @@ const toClientOrder = (order) => ({
 
 export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, totalAmount, purchaseOrderNumber }) => {
   const trimmedMedicine = String(medicine || "").trim();
+  console.info('[SIMULATION_START]', { user: user?._id || user?.id, medicine, quantity, purchaseOrderNumber });
   const requestedQuantity = Number(quantity);
 
   if (!trimmedMedicine) {
@@ -64,6 +66,7 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
   const order = await Order.create({
     user: user._id,
     createdBy: user._id,
+    orderNumber: purchaseOrderNumber?.startsWith("SIM-") ? purchaseOrderNumber : undefined,
     purchaseOrderNumber: purchaseOrderNumber || `PO-${Date.now()}`,
     items: [{
       drug: drug._id,
@@ -86,40 +89,47 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
     }],
   });
 
+  console.info('[ORDER_CREATED]', { orderId: order._id, orderNumber: order.orderNumber || order.purchaseOrderNumber });
+
   await order.populate([
     { path: "items.drug", select: "name genericName manufacturer" },
     { path: "createdBy", select: "name email role" },
   ]);
 
-  const workflowRecipients = await User.find({ role: { $in: ["ADMIN", "WAREHOUSE"] } }).select("email role name");
+  // Resolve recipients synchronously, trigger notifications asynchronously so the API response is not blocked
+  const recipientEmails = await resolveWorkflowRecipientEmails({
+    retailerUserId: user?._id || user?.id,
+    retailerUser: user,
+    includeRetailer: false,
+    includeWarehouse: true,
+    includeAdmin: false,
+    eventType: "order_created",
+  });
 
-  const notificationTasks = workflowRecipients
-    .filter((recipient) => recipient.email)
-    .map((recipient) => sendOrderWorkflowNotification({
-      recipientEmail: recipient.email,
-      orderNumber: order.orderNumber,
-      medicine: trimmedMedicine,
-      quantity: requestedQuantity,
-      totalAmount: computedTotal,
-      status: workflowStatus,
-      nextStep,
-    }));
-
-  if (user.email) {
-    notificationTasks.push(
-      sendOrderWorkflowNotification({
-        recipientEmail: user.email,
-        orderNumber: order.orderNumber,
+  if (recipientEmails.length) {
+    console.info('[NOTIFICATION_TRIGGERED]', { eventType: 'order_created', recipientEmails });
+    // fire-and-forget: do not await email delivery to respond to the client promptly
+    const notificationPromise = Promise.resolve().then(async () => {
+      console.info('[EMAIL_ENTRY]', { eventType: 'order_created', recipientEmails });
+      await sendWorkflowEventNotifications({
+        recipientEmails,
+        eventType: "order_created",
+        orderNumber: order.orderNumber || order.purchaseOrderNumber,
         medicine: trimmedMedicine,
         quantity: requestedQuantity,
         totalAmount: computedTotal,
         status: workflowStatus,
         nextStep,
-      })
-    );
+      });
+    });
+
+    notificationPromise.catch((err) => {
+      console.error('[NOTIFICATION_ERROR]', err.stack || err);
+      // Do not rethrow — fire-and-forget should not crash the request flow.
+    });
   }
 
-  await Promise.allSettled(notificationTasks);
+  console.info('[SIMULATION_RESPONSE_SENT]', { orderId: order._id });
 
   return {
     order: toClientOrder(order),
