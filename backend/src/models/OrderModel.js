@@ -29,6 +29,19 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  // Store owner's email at creation time to guarantee a reliable recipient
+  userEmail: {
+    type: String,
+    required: false,
+    lowercase: true,
+    trim: true
+  },
+  createdByEmail: {
+    type: String,
+    required: false,
+    lowercase: true,
+    trim: true
+  },
   items: [{
     drug: {
       type: mongoose.Schema.Types.ObjectId,

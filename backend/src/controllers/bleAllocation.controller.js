@@ -4,7 +4,6 @@ import OrderModel from '../models/OrderModel.js';
 import Drug from '../models/Drug.js'; // ensure Drug schema is registered for populate()
 import SupplierModel from '../models/SupplierModel.js';
 import User from '../models/UserModel.js';
-import { sendOrderWorkflowNotification } from '../services/notification.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { createAuditEntry } from '../services/audit.service.js';
 
@@ -144,19 +143,33 @@ export const allocateBleToShipment = async (req, res) => {
       await order.save();
     }
 
-    const admins = await User.find({ role: { $in: ['ADMIN'] } }).select('email name');
-    const notificationTasks = admins
-      .filter((admin) => admin.email)
-      .map((admin) => sendOrderWorkflowNotification({
-        recipientEmail: admin.email,
-        orderNumber: shipment.order?.orderNumber || shipment.trackingNumber || 'Unknown',
-        medicine: shipment.items?.[0]?.drug?.name || 'Shipment items',
-        quantity: shipment.items?.[0]?.quantity || 0,
-        totalAmount: shipment.totalAmount || 0,
-        status: 'BLE_ASSIGNED',
-        nextStep: `BLE package ${maskBleId(bleRegistry.bleId)} assigned to shipment ${shipment.trackingNumber}`
-      }));
-    await Promise.allSettled(notificationTasks);
+    // Resolve recipients using centralized notification resolver (admins will be selected)
+    try {
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        order,
+        shipment,
+        orderId: order?._id || shipment._id,
+        includeRetailer: false,
+        includeWarehouse: false,
+        includeAdmin: true,
+        eventType: 'ble_package_allocated'
+      });
+
+      if (recipientEmails.length) {
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: 'ble_package_allocated',
+          orderNumber: shipment.order?.orderNumber || shipment.trackingNumber || 'Unknown',
+          medicine: shipment.items?.[0]?.drug?.name || 'Shipment items',
+          quantity: shipment.items?.[0]?.quantity || 0,
+          totalAmount: shipment.totalAmount || 0,
+          status: 'BLE_ASSIGNED',
+          nextStep: `BLE package ${maskBleId(bleRegistry.bleId)} assigned to shipment ${shipment.trackingNumber}`
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('BLE allocation notification skipped:', notifyErr.message || notifyErr);
+    }
 
     // Return masked BLE id to keep raw BLE identifiers hidden by default
     const resp = {

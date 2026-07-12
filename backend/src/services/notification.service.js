@@ -5,6 +5,7 @@
  */
 
 import { getEmailTransporter, sendBleAlertEmail } from "./email.service.js";
+import OrderModel from "../models/OrderModel.js";
 import UserModel from "../models/UserModel.js";
 
 // ============================================
@@ -38,26 +39,38 @@ const getObjectIdString = (value) => {
   return null;
 };
 
-const resolveRetailerUser = async ({ retailerUser, retailerUserId }) => {
-  if (retailerUser && (retailerUser.email || retailerUser._id || retailerUser.id)) {
-    return retailerUser;
-  }
+const isRetailerRole = (user) => {
+  if (!user) return false;
+  return String(user.role || "").toUpperCase() === "RETAILER";
+};
 
-  if (!retailerUserId) {
-    return null;
-  }
+const getOwnerEmailFromRecord = (record) => {
+  if (!record || typeof record !== "object") return null;
+  if (record.userEmail) return String(record.userEmail).toLowerCase().trim();
+  if (record.createdByEmail) return String(record.createdByEmail).toLowerCase().trim();
+  if (record.email) return String(record.email).toLowerCase().trim();
+  return null;
+};
 
-  if (typeof retailerUserId === "object") {
-    if (retailerUserId.email && (retailerUserId.name || retailerUserId.role || retailerUserId._id || retailerUserId.id)) {
-      return retailerUserId;
+const normalizeUserCandidate = async (candidate) => {
+  if (!candidate) return null;
+
+  if (typeof candidate === "object") {
+    const ownerEmail = getOwnerEmailFromRecord(candidate);
+    if (ownerEmail) {
+      return {
+        ...candidate,
+        email: ownerEmail,
+        role: candidate.role || "RETAILER",
+      };
     }
 
-    const nestedUserId = retailerUserId.createdBy || retailerUserId.user || retailerUserId.retailerUserId || retailerUserId.owner || null;
-    if (nestedUserId && nestedUserId !== retailerUserId) {
-      return resolveRetailerUser({ retailerUser: null, retailerUserId: nestedUserId });
+    const directUserRef = candidate.user || candidate.createdBy || null;
+    if (directUserRef) {
+      return normalizeUserCandidate(directUserRef);
     }
 
-    const objectId = retailerUserId._id || retailerUserId.id || null;
+    const objectId = candidate._id || candidate.id || null;
     if (objectId) {
       return UserModel.findById(objectId).select("email name role");
     }
@@ -65,7 +78,106 @@ const resolveRetailerUser = async ({ retailerUser, retailerUserId }) => {
     return null;
   }
 
-  return UserModel.findById(retailerUserId).select("email name role");
+  if (typeof candidate === "string" || typeof candidate === "number") {
+    return UserModel.findById(candidate).select("email name role");
+  }
+
+  return null;
+};
+
+const resolveRetailerUser = async ({ retailerUser, retailerUserId, order, shipment }) => {
+  if (retailerUser) {
+    const resolved = await normalizeUserCandidate(retailerUser);
+    if (resolved && isRetailerRole(resolved)) {
+      return resolved;
+    }
+    if (resolved) {
+      console.error('[RETAILER_USER_INVALID_ROLE]', { role: resolved.role, email: resolved.email, source: 'retailerUser' });
+    }
+  }
+
+  if (order) {
+    const orderOwnerEmail = getOwnerEmailFromRecord(order);
+    if (orderOwnerEmail) {
+      return {
+        _id: getObjectIdString(order.user || order.createdBy || null),
+        email: orderOwnerEmail,
+        role: 'RETAILER',
+      };
+    }
+
+    const candidateOrderUser = await normalizeUserCandidate(order.user);
+    if (candidateOrderUser) {
+      if (isRetailerRole(candidateOrderUser)) {
+        return candidateOrderUser;
+      }
+      console.error('[RETAILER_USER_INVALID_ROLE]', { role: candidateOrderUser.role, email: candidateOrderUser.email, source: 'order.user', orderId: order._id?.toString() });
+    }
+
+    const candidateCreatedBy = await normalizeUserCandidate(order.createdBy);
+    if (candidateCreatedBy) {
+      if (isRetailerRole(candidateCreatedBy)) {
+        return candidateCreatedBy;
+      }
+      console.error('[RETAILER_USER_INVALID_ROLE]', { role: candidateCreatedBy.role, email: candidateCreatedBy.email, source: 'order.createdBy', orderId: order._id?.toString() });
+    }
+  }
+
+  if (retailerUserId) {
+    const candidate = await normalizeUserCandidate(retailerUserId);
+    if (candidate) {
+      if (isRetailerRole(candidate)) {
+        return candidate;
+      }
+      console.error('[RETAILER_USER_INVALID_ROLE]', { role: candidate.role, email: candidate.email, source: 'retailerUserId' });
+    }
+  }
+
+  if (shipment) {
+    const shipmentOwnerEmail = getOwnerEmailFromRecord(shipment);
+    if (shipmentOwnerEmail) {
+      return {
+        _id: getObjectIdString(shipment.user || shipment.createdBy || null),
+        email: shipmentOwnerEmail,
+        role: 'RETAILER',
+      };
+    }
+
+    const shipmentOrderRef = shipment.order;
+    if (shipmentOrderRef) {
+      if (typeof shipmentOrderRef === "object") {
+        const candidateFromShipmentOrder = await normalizeUserCandidate(shipmentOrderRef.user || shipmentOrderRef.createdBy);
+        if (candidateFromShipmentOrder) {
+          if (isRetailerRole(candidateFromShipmentOrder)) {
+            return candidateFromShipmentOrder;
+          }
+          console.error('[RETAILER_USER_INVALID_ROLE]', { role: candidateFromShipmentOrder.role, email: candidateFromShipmentOrder.email, source: 'shipment.order', shipmentId: shipment._id?.toString() });
+        }
+      } else {
+        const shipmentOrder = await OrderModel.findById(shipmentOrderRef).select("user createdBy userEmail createdByEmail");
+        if (shipmentOrder) {
+          const shipmentOrderOwnerEmail = getOwnerEmailFromRecord(shipmentOrder);
+          if (shipmentOrderOwnerEmail) {
+            return {
+              _id: getObjectIdString(shipmentOrder.user || shipmentOrder.createdBy || null),
+              email: shipmentOrderOwnerEmail,
+              role: 'RETAILER',
+            };
+          }
+
+          const candidateFromShipmentOrder = await normalizeUserCandidate(shipmentOrder.user || shipmentOrder.createdBy);
+          if (candidateFromShipmentOrder) {
+            if (isRetailerRole(candidateFromShipmentOrder)) {
+              return candidateFromShipmentOrder;
+            }
+            console.error('[RETAILER_USER_INVALID_ROLE]', { role: candidateFromShipmentOrder.role, email: candidateFromShipmentOrder.email, source: 'shipment.order.ref', shipmentId: shipment._id?.toString() });
+          }
+        }
+      }
+    }
+  }
+
+  return null;
 };
 
 const getNotificationRecipientPolicy = (eventType) => {
@@ -118,7 +230,7 @@ const getWorkflowSubject = ({ eventType, orderNumber, shipmentNumber }) => {
   }
 };
 
-export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerUser, includeRetailer, includeWarehouse, includeAdmin, eventType }) => {
+export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerUser, includeRetailer, includeWarehouse, includeAdmin, eventType, order, shipment, orderId, warehouseUserId }) => {
   console.info('[NOTIFICATION_EVENT]', { eventName: eventType });
   const recipientEmails = new Set();
   const policy = getNotificationRecipientPolicy(eventType);
@@ -127,9 +239,12 @@ export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerU
   const effectiveIncludeWarehouse = includeWarehouse ?? policy.includeWarehouse;
   const effectiveIncludeAdmin = includeAdmin ?? policy.includeAdmin;
 
-  const retailer = await resolveRetailerUser({ retailerUser, retailerUserId });
+  const retailer = await resolveRetailerUser({ retailerUser, retailerUserId, order, shipment });
   const resolvedRetailerId = retailer?._id || retailer?.id || null;
   const resolvedRetailerEmail = retailer?.email || null;
+
+  // Always log owner discovery for traceability
+  console.info('[ORDER_OWNER]', { orderId: getObjectIdString(orderId || order?._id || shipment?.order || null), ownerId: getObjectIdString(resolvedRetailerId), ownerEmail: resolvedRetailerEmail });
 
   console.info("[notifications] resolve", {
     eventName: eventType,
@@ -142,8 +257,13 @@ export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerU
     retailerUserEmail: retailerUser?.email || null,
   });
 
-  if (effectiveIncludeRetailer && retailer?.email) {
-    recipientEmails.add(retailer.email);
+  if (effectiveIncludeRetailer) {
+    if (resolvedRetailerEmail) {
+      recipientEmails.add(resolvedRetailerEmail);
+      console.info('[EMAIL_RECIPIENT]', { eventType, recipient: resolvedRetailerEmail });
+    } else {
+      console.error('[RETAILER_NOTIFICATION_MISSING]', { eventType, orderId: getObjectIdString(orderId || order?._id || shipment?.order || null), retailerUserId: getObjectIdString(retailerUserId), reason: 'retailer-email-missing' });
+    }
   }
 
   const workflowRecipientDocs = [];
@@ -166,18 +286,31 @@ export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerU
 
   const resolvedEmailAddresses = Array.from(recipientEmails);
   const resolvedRecipientIds = [getObjectIdString(resolvedRetailerId), ...workflowRecipientDocs.map((doc) => getObjectIdString(doc._id || doc.id))].filter(Boolean);
+  const resolvedWarehouseEmail = workflowRecipientDocs[0]?.email || null;
+
+  console.info('[RECIPIENT_DEBUG]', {
+    orderId: getObjectIdString(orderId || order?._id || shipment?.order || null),
+    eventType,
+    retailerUserId: getObjectIdString(retailerUserId || resolvedRetailerId),
+    warehouseUserId: getObjectIdString(warehouseUserId),
+    resolvedRetailerEmail,
+    resolvedWarehouseEmail,
+    finalRecipientList: resolvedEmailAddresses,
+  });
 
   if (resolvedEmailAddresses.length) {
-    console.info('[RECIPIENT_RESOLUTION]', {
-      eventName: eventType,
+    console.info('[RECIPIENT_RESOLVED]', {
+      eventType,
+      orderId: getObjectIdString(orderId || order?._id || shipment?.order || null),
       resolvedRecipientIds,
-      resolvedEmailAddresses,
+      resolvedRecipientEmails: resolvedEmailAddresses,
     });
   } else {
-    console.warn("[notifications] skipped", {
-      eventName: eventType,
+    console.warn("[RECIPIENT_RESOLVED]", {
+      eventType,
+      orderId: getObjectIdString(orderId || order?._id || shipment?.order || null),
       resolvedRecipientIds,
-      resolvedEmailAddresses,
+      resolvedRecipientEmails: resolvedEmailAddresses,
       reason: "no-recipient-emails",
     });
   }
@@ -338,6 +471,36 @@ export const sendShipmentUpdate = async ({ recipientEmail, shipmentId, status, l
 /**
  * Send a generic workflow event notification.
  */
+const getWorkflowEmailBody = ({ eventType, orderNumber, shipmentNumber, medicine, quantity, totalAmount, status, nextStep, details }) => {
+  if (eventType === 'order_approved') {
+    return `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+        <h2 style="color: #15803d; margin-bottom: 8px;">Workflow Update</h2>
+        <p><strong>Reference:</strong> ${orderNumber || shipmentNumber || 'Workflow'}</p>
+        <p><strong>Medicine:</strong> ${medicine || 'N/A'}</p>
+        <p><strong>Quantity:</strong> ${quantity || 0}</p>
+        <p><strong>Status:</strong> ${status || 'APPROVED'}</p>
+        <p><strong>Message:</strong></p>
+        <p>Your order has been approved by the warehouse.</p>
+        <p>The warehouse will now allocate a BLE package and prepare the shipment.</p>
+        <p>You will receive another notification once the shipment has been dispatched.</p>
+        <p><strong>Next Step:</strong> ${nextStep || 'The warehouse will allocate a BLE package and dispatch your shipment shortly.'}</p>
+        <p>Thank you for using the Drug Inventory & Supply Chain Management System.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <h2>Workflow Update</h2>
+    <p><strong>Reference:</strong> ${orderNumber || shipmentNumber || 'Workflow'}</p>
+    <p><strong>Medicine:</strong> ${medicine || 'N/A'}</p>
+    <p><strong>Quantity:</strong> ${quantity || 0}</p>
+    <p><strong>Total Amount:</strong> ${formatCurrency(totalAmount)}</p>
+    <p><strong>Status:</strong> ${status || 'UPDATE'}</p>
+    <p><strong>Next Step:</strong> ${nextStep || details || 'Please review the latest workflow update.'}</p>
+  `;
+};
+
 export const sendWorkflowEventNotification = async ({ recipientEmail, eventType = 'order_workflow', orderNumber, shipmentNumber, medicine, quantity, totalAmount, status, nextStep, details }) => {
   try {
     const mailer = getEmailTransporter();
@@ -357,15 +520,7 @@ export const sendWorkflowEventNotification = async ({ recipientEmail, eventType 
       from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to: recipientEmail,
       subject: getWorkflowSubject({ eventType, orderNumber, shipmentNumber }),
-      html: `
-        <h2>Workflow Update</h2>
-        <p><strong>Reference:</strong> ${orderNumber || shipmentNumber || 'Workflow'}</p>
-        <p><strong>Medicine:</strong> ${medicine || 'N/A'}</p>
-        <p><strong>Quantity:</strong> ${quantity || 0}</p>
-        <p><strong>Total Amount:</strong> ${formatCurrency(totalAmount)}</p>
-        <p><strong>Status:</strong> ${status || 'UPDATE'}</p>
-        <p><strong>Next Step:</strong> ${nextStep || details || 'Please review the latest workflow update.'}</p>
-      `
+      html: getWorkflowEmailBody({ eventType, orderNumber, shipmentNumber, medicine, quantity, totalAmount, status, nextStep, details })
     };
 
     console.info('[SENDMAIL_START]', { recipientEmail, eventType, subject: mailOptions.subject });

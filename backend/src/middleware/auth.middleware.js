@@ -14,12 +14,16 @@ export const verifyToken = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.info('[JWT_DECODED]', { userId: decoded.id || decoded._id, decodedRole: decoded.role, endpoint: req.originalUrl, method: req.method });
+    
     req.user = {
       ...decoded,
       id: decoded.id || decoded._id,
       _id: decoded._id || decoded.id,
       role: String(decoded.role || "").toUpperCase(),
     };
+    
+    console.info('[REQ_USER_SET]', { userId: req.user._id, authenticatedRole: req.user.role, endpoint: req.originalUrl, method: req.method });
 
     next();
   } catch (error) {

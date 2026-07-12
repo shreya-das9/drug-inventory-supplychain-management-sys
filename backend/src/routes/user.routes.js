@@ -6,7 +6,6 @@ import ComplianceModel from "../models/ComplianceModel.js";
 import { verifyToken, isAdmin } from "../middleware/auth.middleware.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { createRetailerOrderWorkflow } from "../services/retailerOrderWorkflow.service.js";
-import { sendOrderWorkflowNotification } from "../services/notification.service.js";
 import OrderModel from "../models/OrderModel.js";
 import InventoryModel from "../models/Inventory.js";
 import DrugModel from "../models/Drug.js";
@@ -76,10 +75,13 @@ router.get("/roles", (req, res) => {
 router.post("/retailer/orders", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/orders', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
 
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/orders', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/orders', userId: req.user?._id || req.user?.id, role });
 
     const { medicine, quantity, qty, totalAmount, purchaseOrderNumber } = req.body;
     const result = await createRetailerOrderWorkflow({
@@ -102,10 +104,13 @@ router.post("/retailer/orders", async (req, res) => {
 router.get("/retailer/orders", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/orders', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
 
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/orders', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/orders', userId: req.user?._id || req.user?.id, role });
 
     const { page = 1, limit = 10, status = "" } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -143,10 +148,13 @@ router.get("/retailer/orders", async (req, res) => {
 router.patch("/retailer/orders/:id/cancel", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/orders/:id/cancel', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
 
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/orders/:id/cancel', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/orders/:id/cancel', userId: req.user?._id || req.user?.id, role });
 
     const { id } = req.params;
     const { reason } = req.body;
@@ -196,10 +204,13 @@ router.patch("/retailer/orders/:id/cancel", async (req, res) => {
 router.delete("/retailer/orders/:id", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/orders/:id', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
 
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/orders/:id', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/orders/:id', userId: req.user?._id || req.user?.id, role });
 
     const { id } = req.params;
 
@@ -233,9 +244,12 @@ router.delete("/retailer/orders/:id", async (req, res) => {
 router.get("/retailer/shipments", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/shipments', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/shipments', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/shipments', userId: req.user?._id || req.user?.id, role });
 
     const userId = req.user._id || req.user.id;
     const retailerOrders = await OrderModel.find({ user: userId }).select("_id");
@@ -257,9 +271,12 @@ router.get("/retailer/shipments", async (req, res) => {
 router.get("/retailer/shipments/:id", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/shipments/:id', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/shipments/:id', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/shipments/:id', userId: req.user?._id || req.user?.id, role });
 
     const { id } = req.params;
     const shipment = await ShipmentModel.findById(id)
@@ -401,9 +418,12 @@ router.post("/simulation/reset", async (req, res) => {
 router.patch("/retailer/shipments/:id/confirm", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/shipments/:id/confirm', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/shipments/:id/confirm', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/shipments/:id/confirm', userId: req.user?._id || req.user?.id, role });
 
     const { id } = req.params;
     const shipment = await ShipmentModel.findById(id).populate({ path: "order", select: "user orderNumber status" });
@@ -458,9 +478,12 @@ router.patch("/retailer/shipments/:id/confirm", async (req, res) => {
 router.patch("/retailer/shipments/:id/quarantine", async (req, res) => {
   try {
     const role = String(req.user?.role || "").toUpperCase();
+    console.info('[RETAILER_ENDPOINT_CALLED]', { endpoint: '/retailer/shipments/:id/quarantine', userId: req.user?._id || req.user?.id, rawRole: req.user?.role, normalizedRole: role, roleCheck: role === "RETAILER" });
     if (role !== "RETAILER") {
+      console.warn('[RETAILER_ROLE_CHECK_FAILED]', { endpoint: '/retailer/shipments/:id/quarantine', userId: req.user?._id || req.user?.id, role, expected: 'RETAILER' });
       return errorResponse(res, 403, "Access denied. Retailer role required.");
     }
+    console.info('[RETAILER_ROLE_CHECK_PASSED]', { endpoint: '/retailer/shipments/:id/quarantine', userId: req.user?._id || req.user?.id, role });
 
     const { id } = req.params;
     const { reason } = req.body;
@@ -510,20 +533,32 @@ router.patch("/retailer/shipments/:id/quarantine", async (req, res) => {
       updatedBy: req.user._id || req.user.id
     });
 
-    const admins = await User.find({ role: { $in: ["ADMIN", "WAREHOUSE"] } }).select("email name");
-    const notificationTasks = admins
-      .filter((admin) => admin.email)
-      .map((admin) => sendOrderWorkflowNotification({
-        recipientEmail: admin.email,
-        orderNumber: shipment.order?.orderNumber || shipment.trackingNumber,
-        medicine: shipment.items?.[0]?.drug?.name || "BLE package",
-        quantity: shipment.items?.[0]?.quantity || 0,
-        totalAmount: shipment.totalAmount || 0,
-        status: "QUARANTINED",
-        nextStep: `Shipment ${shipment.trackingNumber} was quarantined by the retailer. Please investigate immediately.`
-      }));
+    try {
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        shipment,
+        order: shipment.order || null,
+        orderId: shipment.order || shipment._id,
+        includeRetailer: false,
+        includeWarehouse: true,
+        includeAdmin: true,
+        eventType: 'shipment_quarantined'
+      });
 
-    await Promise.allSettled(notificationTasks);
+      if (recipientEmails.length) {
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: 'shipment_quarantined',
+          orderNumber: shipment.order?.orderNumber || shipment.trackingNumber,
+          medicine: shipment.items?.[0]?.drug?.name || 'BLE package',
+          quantity: shipment.items?.[0]?.quantity || 0,
+          totalAmount: shipment.totalAmount || 0,
+          status: 'QUARANTINED',
+          nextStep: `Shipment ${shipment.trackingNumber} was quarantined by the retailer. Please investigate immediately.`
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('Quarantine notification skipped:', notifyErr.message || notifyErr);
+    }
 
     return successResponse(res, 200, "Shipment quarantined and compliance report created", { shipment, report });
   } catch (error) {

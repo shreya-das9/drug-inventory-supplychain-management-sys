@@ -37,26 +37,36 @@ async function seedOrdersAndShipments() {
     console.log(`✅ Admin user: ${adminUser.email}`);
 
     // Step 2: Get or create test users (retailers and regular users)
+    // Customers can be provided via environment variable as JSON array to avoid hardcoded demo emails
+    // Example: SEED_CUSTOMERS_JSON='[{"name":"John Doe","email":"john@company.com","role":"RETAILER"}]'
     const customers = [];
-    const customerData = [
-      { name: "John Doe", email: "john@retailer.com", role: "RETAILER" },
-      { name: "Jane Smith", email: "jane@retailer.com", role: "RETAILER" },
-      { name: "Bob Johnson", email: "bob@user.com", role: "USER" }
-    ];
-
-    for (const data of customerData) {
-      let user = await User.findOne({ email: data.email });
-      if (!user) {
-        user = await User.create({
-          name: data.name,
-          email: data.email,
-          password: "user123",
-          role: data.role
-        });
-      }
-      customers.push(user);
+    const customerDataRaw = process.env.SEED_CUSTOMERS_JSON || '[]';
+    let customerData = [];
+    try {
+      customerData = JSON.parse(customerDataRaw);
+    } catch (err) {
+      console.error('Invalid SEED_CUSTOMERS_JSON; expected JSON array. Skipping customer seed.');
+      customerData = [];
     }
-    console.log(`✅ Created ${customers.length} users (retailers/customers)`);
+
+    if (!Array.isArray(customerData) || customerData.length === 0) {
+      console.log('No SEED_CUSTOMERS_JSON provided; skipping creation of demo users to avoid seeded demo emails.');
+    } else {
+      for (const data of customerData) {
+        if (!data.email) continue;
+        let user = await User.findOne({ email: data.email });
+        if (!user) {
+          user = await User.create({
+            name: data.name || data.email,
+            email: data.email,
+            password: data.password || 'user123',
+            role: data.role || 'USER'
+          });
+        }
+        customers.push(user);
+      }
+      console.log(`✅ Created ${customers.length} users (retailers/customers)`);
+    }
 
     // Step 3: Get some drugs from database
     const drugs = await Drug.find().limit(20);

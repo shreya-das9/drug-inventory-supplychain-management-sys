@@ -45,23 +45,26 @@ export const getStats = async (req, res) => {
 export const getAlerts = async (req, res) => {
   try {
     const today = new Date();
-    const nextMonth = new Date(today.setMonth(today.getMonth() + 1));
+    const nextMonth = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const [expiryAlerts, lowStockAlerts, securityTransitAlertsRaw, delayComplianceAlertsRaw, incomingOrdersRaw] = await Promise.all([
+    // Use allSettled to prevent one slow query from blocking others
+    const results = await Promise.allSettled([
       Drug.find({
         expiryDate: { $lte: nextMonth, $gte: new Date() },
-      }).select("name batchNumber expiryDate"),
+      }).select("name batchNumber expiryDate").lean().exec(),
       Inventory.find({
         quantity: { $lt: 10 },
-      }).populate("drug", "name category"),
+      }).populate("drug", "name category").lean().exec(),
       Scanlog.find({ alertCodes: "TRANSIT_TIME_EXCEEDED" })
         .sort({ scannedAt: -1 })
-        .limit(50)
-        .select("bleId stage scannedAt alertCodes location details verificationStatus"),
+        .limit(20)
+        .select("bleId stage scannedAt alertCodes location details verificationStatus")
+        .lean().exec(),
       Compliance.find({ 'metadata.alertType': 'transit_delay' })
         .sort({ createdAt: -1 })
-        .limit(50)
-        .select("title description severity status relatedShipment metadata createdAt"),
+        .limit(20)
+        .select("title description severity status relatedShipment metadata createdAt")
+        .lean().exec(),
       Order.find({
         $or: [
           { status: { $in: ["pending", "confirmed"] } },
@@ -72,7 +75,15 @@ export const getAlerts = async (req, res) => {
         .limit(12)
         .populate("items.drug", "name batchNumber price")
         .populate("createdBy", "name email role")
+        .lean().exec()
     ]);
+
+    // Extract values from settled results
+    const expiryAlerts = results[0].status === 'fulfilled' ? (results[0].value || []) : [];
+    const lowStockAlerts = results[1].status === 'fulfilled' ? (results[1].value || []) : [];
+    const securityTransitAlertsRaw = results[2].status === 'fulfilled' ? (results[2].value || []) : [];
+    const delayComplianceAlertsRaw = results[3].status === 'fulfilled' ? (results[3].value || []) : [];
+    const incomingOrdersRaw = results[4].status === 'fulfilled' ? (results[4].value || []) : [];
 
     const securityTransitAlerts = [
       ...securityTransitAlertsRaw.map((log) => ({

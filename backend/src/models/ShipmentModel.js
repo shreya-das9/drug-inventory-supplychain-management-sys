@@ -16,6 +16,23 @@ const shipmentSchema = new mongoose.Schema({
     ref: 'Order',
     default: null
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  userEmail: {
+    type: String,
+    required: false,
+    lowercase: true,
+    trim: true
+  },
+  createdByEmail: {
+    type: String,
+    required: false,
+    lowercase: true,
+    trim: true
+  },
   items: [{
     drug: {
       type: mongoose.Schema.Types.ObjectId,

@@ -6,6 +6,7 @@ import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from '
 import { successResponse, errorResponse } from '../utils/response.js';
 import { validateArray, validateRequired } from '../utils/validation.js';
 import { createAuditEntry } from '../services/audit.service.js';
+import { preserveOrderOwnerIdentity } from '../utils/orderOwner.js';
 
 // Get all orders with filtering and pagination
 const getAllOrders = async (req, res) => {
@@ -102,8 +103,14 @@ const createOrder = async (req, res) => {
   try {
     const orderData = {
       ...req.body,
-      createdBy: req.user._id
+      user: req.user?._id || req.user?.id || null,
+      createdBy: req.user?._id || req.user?.id || null,
     };
+    // Persist creator's email for strict owner resolution
+    if (req.user && req.user.email) {
+      orderData.userEmail = String(req.user.email).toLowerCase().trim();
+      orderData.createdByEmail = String(req.user.email).toLowerCase().trim();
+    }
     
     // Normalize status to lowercase if provided
     if (orderData.status) {
@@ -149,8 +156,11 @@ const createOrder = async (req, res) => {
 
     try {
       const recipientEmails = await resolveWorkflowRecipientEmails({
-        retailerUserId: order.createdBy || order.user || req.user?._id || req.user?.id,
-        retailerUser: await UserModel.findById(order.createdBy || order.user || req.user?._id || req.user?.id).select('email name role'),
+        retailerUserId: order.user || order.createdBy || null,
+        retailerUser: null,
+        order,
+        orderId: order._id,
+        warehouseUserId: req.user?._id || req.user?.id || null,
         includeRetailer: false,
         includeWarehouse: true,
         includeAdmin: false,
@@ -211,6 +221,17 @@ const updateOrderStatus = async (req, res) => {
     }
     
     const previousStatus = order.status;
+
+    preserveOrderOwnerIdentity(order, req.user);
+
+    const persistedOwnerEmail = String(order.userEmail || order.createdByEmail || '').trim().toLowerCase();
+    if (!persistedOwnerEmail && req.user?.email) {
+      order.userEmail = String(req.user.email).toLowerCase().trim();
+      order.createdByEmail = String(req.user.email).toLowerCase().trim();
+    } else if (persistedOwnerEmail) {
+      order.userEmail = order.userEmail || persistedOwnerEmail;
+      order.createdByEmail = order.createdByEmail || persistedOwnerEmail;
+    }
 
     // Update status
     order.status = status;
@@ -284,35 +305,66 @@ const updateOrderStatus = async (req, res) => {
       };
 
       const effectiveEventType = eventTypeMap[status];
-      const recipientEmails = await resolveWorkflowRecipientEmails({
-        retailerUserId: order.createdBy || order.user || req.user?._id || req.user?.id,
-        retailerUser: await UserModel.findById(order.createdBy || order.user || req.user?._id || req.user?.id).select('email name role'),
-        includeRetailer: ['order_approved', 'order_confirmed', 'order_rejected', 'shipment_dispatched'].includes(effectiveEventType),
-        includeWarehouse: effectiveEventType === 'shipment_delivered',
-        includeAdmin: effectiveEventType === 'shipment_delivered',
-        eventType: effectiveEventType,
-      });
+      console.info('[ORDER_APPROVED]', { orderId: order._id?.toString(), status, effectiveEventType });
 
-      if (recipientEmails.length && eventTypeMap[status]) {
-        const item = order.items?.[0] || {};
-        await sendWorkflowEventNotifications({
-          recipientEmails,
-          eventType: eventTypeMap[status],
-          orderNumber: order.orderNumber,
-          medicine: item.drug?.name || item.drug || 'Item',
-          quantity: item.quantity || 0,
-          totalAmount: order.totalAmount || 0,
-          status: status.toUpperCase(),
-          nextStep: status === 'approved'
-            ? 'The order has been approved and will move to fulfillment.'
-            : status === 'confirmed'
-              ? 'Warehouse will prepare and dispatch the order.'
-              : status === 'shipped'
-                ? 'Order is on the way.'
-                : status === 'delivered'
-                  ? 'Order has been delivered.'
-                  : 'Please review the latest order update.'
+      if (effectiveEventType) {
+        console.info('[EVENT_CREATED]', { eventType: effectiveEventType });
+
+        // Ensure the order includes retailer owner references for recipient resolution
+        await order.populate([ 
+          { path: 'user', select: 'email name role' },
+          { path: 'createdBy', select: 'email name role' }
+        ]);
+
+        const retailerUserId = order.user?._id || order.user || order.createdBy?._id || order.createdBy || null;
+        const retailerUser = retailerUserId
+          ? await UserModel.findById(retailerUserId).select('email name role')
+          : null;
+
+        console.info('[ORDER_OWNER]', { orderId: order._id?.toString(), ownerId: retailerUser?._id || retailerUserId, ownerEmail: retailerUser?.email || order.userEmail || order.createdByEmail || null });
+
+        const recipientEmails = await resolveWorkflowRecipientEmails({
+          retailerUserId,
+          retailerUser,
+          order,
+          orderId: order._id,
+          warehouseUserId: req.user?._id || req.user?.id || null,
+          includeRetailer: ['order_approved', 'order_confirmed', 'order_rejected', 'shipment_dispatched'].includes(effectiveEventType),
+          includeWarehouse: effectiveEventType === 'shipment_delivered',
+          includeAdmin: effectiveEventType === 'shipment_delivered',
+          eventType: effectiveEventType,
         });
+
+        // Log chosen recipients explicitly
+        recipientEmails.forEach((r) => console.info('[EMAIL_RECIPIENT]', { eventType: effectiveEventType, recipient: r }));
+
+        if (recipientEmails.length) {
+          const item = order.items?.[0] || {};
+          await sendWorkflowEventNotifications({
+            recipientEmails,
+            eventType: effectiveEventType,
+            orderNumber: order.orderNumber,
+            medicine: item.drug?.name || item.drug || 'Item',
+            quantity: item.quantity || 0,
+            totalAmount: order.totalAmount || 0,
+            status: status.toUpperCase(),
+            nextStep: status === 'approved'
+              ? 'The order has been approved and will move to fulfillment.'
+              : status === 'confirmed'
+                ? 'Warehouse will prepare and dispatch the order.'
+                : status === 'shipped'
+                  ? 'Order is on the way.'
+                  : status === 'delivered'
+                    ? 'Order has been delivered.'
+                    : 'Please review the latest order update.'
+          });
+        } else {
+          console.warn('[RECIPIENT_RESOLVED]', {
+            eventType: effectiveEventType,
+            orderId: order._id?.toString(),
+            recipientEmails
+          });
+        }
       }
     } catch (e) {
       console.error('Notification error:', e);
@@ -340,22 +392,33 @@ const escalateOrder = async (req, res) => {
     order.statusHistory.push({ status: 'escalated', timestamp: new Date(), updatedBy: req.user._id, notes: reason || 'Escalated by warehouse' });
     await order.save();
 
-    // Notify admins
-    const admins = await UserModel.find({ role: { $in: ['ADMIN'] } }).select('email name');
-    const item = order.items?.[0] || {};
-    const tasks = admins
-      .filter(a => a.email)
-      .map(a => sendOrderWorkflowNotification({
-        recipientEmail: a.email,
-        orderNumber: order.orderNumber,
-        medicine: item.drug?.name || 'Item',
-        quantity: item.quantity || 0,
-        totalAmount: order.totalAmount || 0,
-        status: 'ESCALATED',
-        nextStep: 'Please review and advise on shortage/exception.'
-      }));
+    // Notify admins via centralized recipient resolver
+    try {
+      const item = order.items?.[0] || {};
+      const recipientEmails = await resolveWorkflowRecipientEmails({
+        order,
+        orderId: order._id,
+        includeRetailer: false,
+        includeWarehouse: false,
+        includeAdmin: true,
+        eventType: 'order_escalated'
+      });
 
-    await Promise.allSettled(tasks);
+      if (recipientEmails.length) {
+        await sendWorkflowEventNotifications({
+          recipientEmails,
+          eventType: 'order_escalated',
+          orderNumber: order.orderNumber,
+          medicine: item.drug?.name || 'Item',
+          quantity: item.quantity || 0,
+          totalAmount: order.totalAmount || 0,
+          status: 'ESCALATED',
+          nextStep: 'Please review and advise on shortage/exception.'
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('Order escalation notification skipped:', notifyErr.message || notifyErr);
+    }
 
     return successResponse(res, 200, 'Order escalated to admin', order);
   } catch (error) {

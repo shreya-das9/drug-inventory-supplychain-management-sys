@@ -53,7 +53,7 @@ export const useApi = () => {
             url: attemptUrl,
             data,
             headers,
-            timeout: 5000,
+        timeout: 15000,
           });
 
           const duration = Date.now() - start;

@@ -2,6 +2,7 @@ import ShipmentModel from '../models/ShipmentModel.js';
 import SupplierModel from '../models/SupplierModel.js';
 import Drug from '../models/Drug.js';
 import UserModel from '../models/UserModel.js';
+import OrderModel from '../models/OrderModel.js';
 import { validateArray } from '../utils/validation.js';
 import { createAuditEntry } from '../services/audit.service.js';
 import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from '../services/notification.service.js';
@@ -145,11 +146,26 @@ const createShipment = async (req, res) => {
       totalAmount += item.quantity * item.unitPrice;
     });
     
+    const ownerUserId = req.user?._id || req.user?.id || null;
+    let ownerEmail = req.user?.email || null;
+
+    const linkedOrderId = req.body.order || req.body.orderId || null;
+    let linkedOrder = null;
+    if (linkedOrderId) {
+      linkedOrder = await OrderModel.findById(linkedOrderId).select('user createdBy userEmail createdByEmail');
+    }
+
+    const resolvedOwnerUserId = linkedOrder?.user || linkedOrder?.createdBy || ownerUserId;
+    const resolvedOwnerEmail = linkedOrder?.userEmail || linkedOrder?.createdByEmail || ownerEmail;
+
     // Create shipment
     const shipmentData = {
       ...req.body,
       totalAmount,
-      createdBy: req.user.id || req.user._id,
+      user: resolvedOwnerUserId,
+      createdBy: resolvedOwnerUserId,
+      userEmail: resolvedOwnerEmail ? String(resolvedOwnerEmail).toLowerCase().trim() : null,
+      createdByEmail: resolvedOwnerEmail ? String(resolvedOwnerEmail).toLowerCase().trim() : null,
       statusHistory: [{
         status: 'pending',
         updatedBy: req.user.id || req.user._id,
@@ -282,6 +298,23 @@ const updateShipmentStatus = async (req, res) => {
     }
     
     const oldStatus = shipment.status;
+    const linkedOrder = shipment.order ? await OrderModel.findById(shipment.order).select('user createdBy userEmail createdByEmail') : null;
+    const ownerUserId = linkedOrder?.user || linkedOrder?.createdBy || req.user?._id || req.user?.id || null;
+    const ownerEmail = linkedOrder?.userEmail || linkedOrder?.createdByEmail || req.user?.email || null;
+
+    if (!shipment.user && ownerUserId) {
+      shipment.user = ownerUserId;
+    }
+    if (!shipment.createdBy && ownerUserId) {
+      shipment.createdBy = ownerUserId;
+    }
+    if (!shipment.userEmail && ownerEmail) {
+      shipment.userEmail = String(ownerEmail).toLowerCase().trim();
+    }
+    if (!shipment.createdByEmail && ownerEmail) {
+      shipment.createdByEmail = String(ownerEmail).toLowerCase().trim();
+    }
+
     shipment.status = status.toLowerCase();
     
     if (status.toLowerCase() === 'delivered') {
@@ -323,15 +356,34 @@ const updateShipmentStatus = async (req, res) => {
 
     try {
       const newStatusLower = shipment.status.toLowerCase();
+      let retailerUser = null;
+      let retailerUserId = null;
+      let populatedOrder = null;
+
+      if (shipment.order && typeof shipment.order === 'object' && (shipment.order.user || shipment.order.createdBy)) {
+        populatedOrder = shipment.order;
+        retailerUserId = shipment.order.user?._id || shipment.order.user || shipment.order.createdBy?._id || shipment.order.createdBy || null;
+      } else if (shipment.order) {
+        populatedOrder = await OrderModel.findById(shipment.order).select('user createdBy');
+        retailerUserId = populatedOrder?.user || populatedOrder?.createdBy || null;
+      }
+
+      if (retailerUserId) {
+        retailerUser = await UserModel.findById(retailerUserId).select('email name role');
+      }
+
       const recipientEmails = await resolveWorkflowRecipientEmails({
-        retailerUserId: shipment.createdBy || shipment.order?.user || shipment.order || req.user?._id || req.user?.id,
-        retailerUser: await UserModel.findById(shipment.createdBy || shipment.order?.user || shipment.order || req.user?._id || req.user?.id).select('email name role'),
+        retailerUserId,
+        retailerUser,
+        shipment,
+        order: populatedOrder || null,
+        orderId: shipment.order || shipment._id,
+        warehouseUserId: req.user?._id || req.user?.id || null,
         includeRetailer: newStatusLower === 'shipped' || newStatusLower === 'delivered',
         includeWarehouse: newStatusLower === 'delivered',
         includeAdmin: newStatusLower === 'delivered',
         eventType: newStatusLower === 'shipped' ? 'shipment_dispatched' : 'shipment_delivered',
       });
-
       if (recipientEmails.length && ['shipped', 'delivered'].includes(newStatusLower)) {
         await sendWorkflowEventNotifications({
           recipientEmails,

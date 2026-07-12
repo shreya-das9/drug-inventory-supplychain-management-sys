@@ -49,6 +49,7 @@ router.post("/signup", async (req, res) => {
     // create new user
     const user = new User({ name, email: normalizedEmail, password, role: normalizedRole });
     await user.save();
+    console.info('[SIGNUP_USER_CREATED]', { userId: user._id, email: user.email, requestedRole: normalizedRole, savedRole: user.role });
 
     // 🔑 generate JWT token
     const token = jwt.sign(
@@ -56,6 +57,7 @@ router.post("/signup", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
     );
+    console.info('[SIGNUP_JWT_GENERATED]', { userId: user._id, email: user.email, jwtRole: user.role });
 
     // send response with token + user info
     res.status(201).json({
@@ -116,13 +118,14 @@ router.post("/login", async (req, res) => {
     // Generate JWT (guarded to avoid throwing unexpected errors)
     let token;
     try {
+      console.info('[LOGIN_USER_RETRIEVED]', { userId: user._id, email: user.email, userRole: user.role });
       token = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
       );
       // Log success of token generation, but do not log full token value
-      console.info("[auth] JWT generated", { userId: user._id, tokenPreview: token?.slice?.(0, 8) });
+      console.info("[auth] JWT generated", { userId: user._id, tokenPreview: token?.slice?.(0, 8), jwtRole: user.role });
     } catch (signErr) {
       console.error("[auth] Login error signing JWT:", signErr && signErr.stack ? signErr.stack : signErr);
       return res.status(500).json({ message: "Internal server error" });

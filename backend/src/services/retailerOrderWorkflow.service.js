@@ -66,6 +66,8 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
   const order = await Order.create({
     user: user._id,
     createdBy: user._id,
+    userEmail: user.email || null,
+    createdByEmail: user.email || null,
     orderNumber: purchaseOrderNumber?.startsWith("SIM-") ? purchaseOrderNumber : undefined,
     purchaseOrderNumber: purchaseOrderNumber || `PO-${Date.now()}`,
     items: [{
@@ -89,8 +91,9 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
     }],
   });
 
+  const retailerUser = await User.findById(user?._id || user?.id).select("email name role");
   console.info('[ORDER_CREATED]', { orderId: order._id, orderNumber: order.orderNumber || order.purchaseOrderNumber });
-
+  console.info('[AUTHENTICATED_RETAILER]', { email: retailerUser?.email || user?.email || null, userId: retailerUser?._id || user?._id || null });
   await order.populate([
     { path: "items.drug", select: "name genericName manufacturer" },
     { path: "createdBy", select: "name email role" },
@@ -98,8 +101,11 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
 
   // Resolve recipients synchronously, trigger notifications asynchronously so the API response is not blocked
   const recipientEmails = await resolveWorkflowRecipientEmails({
-    retailerUserId: user?._id || user?.id,
-    retailerUser: user,
+    retailerUserId: retailerUser?._id || null,
+    retailerUser: retailerUser || null,
+    order,
+    orderId: order._id,
+    warehouseUserId: null,
     includeRetailer: false,
     includeWarehouse: true,
     includeAdmin: false,
