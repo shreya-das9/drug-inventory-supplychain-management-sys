@@ -138,6 +138,7 @@ export const allocateBleToShipment = async (req, res) => {
 
     if (order) {
       order.bleId = bleRegistry.bleId;
+      order.shipmentId = shipment._id;
       order.statusHistory = order.statusHistory || [];
       order.statusHistory.push({ status: 'ble_assigned', timestamp: new Date(), updatedBy: req.user?._id || req.user?.id || null, notes: `BLE assigned to order` });
       await order.save();

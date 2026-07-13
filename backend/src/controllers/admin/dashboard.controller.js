@@ -142,6 +142,19 @@ export const getAlerts = async (req, res) => {
       "Low Stock Alerts"
     );
 
+    // Look up associated shipments for all orders
+    const orderIds = incomingOrdersRaw.map(o => o._id);
+    const shipmentsMap = {};
+    if (orderIds.length > 0) {
+      const shipments = await Shipment.find({ order: { $in: orderIds } })
+        .select("_id order")
+        .lean()
+        .exec();
+      shipments.forEach(shipment => {
+        shipmentsMap[String(shipment.order)] = shipment._id;
+      });
+    }
+
     const incomingOrders = validateArray(
       incomingOrdersRaw.map((order) => {
         const item = order.items?.[0] || {};
@@ -153,6 +166,9 @@ export const getAlerts = async (req, res) => {
             .reverse()
             .find((entry) => entry.status === "escalated")?.notes ||
           (order.escalatedToAdmin ? "Escalated by warehouse" : null);
+        
+        // Use shipmentId from order if available, otherwise look it up from shipmentsMap
+        const shipmentId = order.shipmentId || shipmentsMap[String(order._id)] || null;
 
         return {
           _id: order._id,
@@ -171,6 +187,7 @@ export const getAlerts = async (req, res) => {
           escalationReason,
           createdAt: order.createdAt,
           createdBy: order.createdBy,
+          shipmentId,
         };
       }),
       ["id", "orderNumber", "medicine"],

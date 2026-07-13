@@ -100,6 +100,11 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  shipmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Shipment',
+    default: null
+  },
   deliveredAt: Date,
   cancellationReason: String,
   statusHistory: [{
