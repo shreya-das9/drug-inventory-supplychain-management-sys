@@ -16,6 +16,8 @@ const formatCurrency = (value) => `₹${Number(value || 0).toFixed(2)}`;
 
 const workflowRoles = ["ADMIN", "WAREHOUSE", "WAREHOUSE_ADMIN"];
 
+const normalizeRole = (value) => String(value || "").trim().toUpperCase();
+
 const getObjectIdString = (value) => {
   if (!value) return null;
   if (typeof value === "string" || typeof value === "number") return String(value);
@@ -41,7 +43,7 @@ const getObjectIdString = (value) => {
 
 const isRetailerRole = (user) => {
   if (!user) return false;
-  return String(user.role || "").toUpperCase() === "RETAILER";
+  return normalizeRole(user.role) === "RETAILER";
 };
 
 const getOwnerEmailFromRecord = (record) => {
@@ -272,12 +274,15 @@ export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerU
 
   const workflowRecipientDocs = [];
   if (effectiveIncludeWarehouse || effectiveIncludeAdmin) {
-    const workflowUsers = await UserModel.find({ role: { $in: effectiveIncludeAdmin && !effectiveIncludeWarehouse ? ["ADMIN"] : workflowRoles } }).select("email role name");
+    const workflowUsers = await UserModel.find({
+      role: { $in: ["ADMIN", "WAREHOUSE", "WAREHOUSE_ADMIN", "admin", "warehouse", "warehouse_admin"] }
+    }).select("email role name");
     workflowUsers.forEach((userDoc) => {
       if (userDoc?.email) {
-        const shouldInclude = effectiveIncludeWarehouse && ["WAREHOUSE", "WAREHOUSE_ADMIN"].includes(userDoc.role)
+        const normalizedRole = normalizeRole(userDoc.role);
+        const shouldInclude = effectiveIncludeWarehouse && ["WAREHOUSE", "WAREHOUSE_ADMIN"].includes(normalizedRole)
           ? true
-          : effectiveIncludeAdmin && userDoc.role === "ADMIN"
+          : effectiveIncludeAdmin && normalizedRole === "ADMIN"
             ? true
             : false;
         if (shouldInclude) {

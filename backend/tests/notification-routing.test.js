@@ -152,6 +152,34 @@ describe('notification routing', function() {
     assert.deepStrictEqual(recipients, [retailer.email]);
   });
 
+  it('resolves warehouse recipients even when roles are stored in lowercase', async () => {
+    const retailer = await UserModel.create({
+      name: 'Retailer User',
+      email: 'retailer-lowercase-role@example.com',
+      password: 'Password123!',
+      role: 'RETAILER'
+    });
+
+    const warehouse = await UserModel.collection.insertOne({
+      name: 'Warehouse User',
+      email: 'warehouse-lowercase-role@example.com',
+      password: 'Password123!',
+      role: 'warehouse',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const warehouseDoc = await UserModel.findById(warehouse.insertedId).lean();
+
+    const recipients = await resolveWorkflowRecipientEmails({
+      eventType: 'order_created',
+      retailerUserId: retailer._id,
+      retailerUser: retailer,
+    });
+
+    assert.deepStrictEqual(recipients, [warehouseDoc.email]);
+  });
+
   it('routes delay and compliance events to the expected recipient roles', async () => {
     const retailer = await UserModel.create({
       name: 'Retailer User',

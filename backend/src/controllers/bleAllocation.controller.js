@@ -92,13 +92,14 @@ export const allocateBleToShipment = async (req, res) => {
       return errorResponse(res, 400, 'Shipment already has a BLE package assigned');
     }
 
-    // Only allow allocation to confirmed shipments:
-    // If the shipment is linked to an order, that order must be `confirmed`.
+    // Only allow allocation to approved or confirmed shipments:
+    // If the shipment is linked to an order, that order must be `approved` or `confirmed`.
     if (shipment.order) {
       const linkedOrder = await OrderModel.findById(shipment.order).select('status');
       if (!linkedOrder) return errorResponse(res, 404, 'Linked order not found');
-      if ((linkedOrder.status || '').toLowerCase() !== 'confirmed') {
-        return errorResponse(res, 400, 'BLE can only be allocated to confirmed orders/shipments');
+      const orderStatus = (linkedOrder.status || '').toLowerCase();
+      if (!['approved', 'confirmed'].includes(orderStatus)) {
+        return errorResponse(res, 400, 'BLE can only be allocated to approved or confirmed orders/shipments');
       }
     }
 

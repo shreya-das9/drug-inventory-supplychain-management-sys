@@ -66,7 +66,7 @@ export const getAlerts = async (req, res) => {
         .select("title description severity status relatedShipment metadata createdAt")
         .lean().exec(),
       Order.find({
-        status: "confirmed",
+        status: { $in: ["approved", "confirmed"] },
         escalatedToAdmin: { $ne: true }
       })
         .sort({ createdAt: -1 })
@@ -147,11 +147,16 @@ export const getAlerts = async (req, res) => {
     const shipmentsMap = {};
     if (orderIds.length > 0) {
       const shipments = await Shipment.find({ order: { $in: orderIds } })
-        .select("_id order")
+        .select("_id order status bleId trackingNumber")
         .lean()
         .exec();
       shipments.forEach(shipment => {
-        shipmentsMap[String(shipment.order)] = shipment._id;
+        shipmentsMap[String(shipment.order)] = {
+          shipmentId: shipment._id,
+          status: shipment.status,
+          bleId: shipment.bleId,
+          trackingNumber: shipment.trackingNumber
+        };
       });
     }
 
@@ -159,7 +164,8 @@ export const getAlerts = async (req, res) => {
       incomingOrdersRaw.map((order) => {
         const item = order.items?.[0] || {};
         const medicineName = item.drug?.name || "Unknown";
-        const inventoryAvailable = String(order.status || "").toLowerCase() === "confirmed";
+        const normalizedStatus = String(order.status || "").toLowerCase();
+        const inventoryAvailable = ['approved', 'confirmed'].includes(normalizedStatus);
         const escalationReason =
           order.statusHistory
             ?.slice()
@@ -167,8 +173,14 @@ export const getAlerts = async (req, res) => {
             .find((entry) => entry.status === "escalated")?.notes ||
           (order.escalatedToAdmin ? "Escalated by warehouse" : null);
         
-        // Use shipmentId from order if available, otherwise look it up from shipmentsMap
-        const shipmentId = order.shipmentId || shipmentsMap[String(order._id)] || null;
+        const shipmentRecord = shipmentsMap[String(order._id)] || (order.shipmentId
+          ? {
+              shipmentId: order.shipmentId,
+              status: null,
+              bleId: order.bleId || null,
+              trackingNumber: order.trackingNumber || null
+            }
+          : null);
 
         return {
           _id: order._id,
@@ -187,7 +199,10 @@ export const getAlerts = async (req, res) => {
           escalationReason,
           createdAt: order.createdAt,
           createdBy: order.createdBy,
-          shipmentId,
+          shipmentId: shipmentRecord?.shipmentId || null,
+          shipmentStatus: shipmentRecord?.status || null,
+          bleId: order.bleId || shipmentRecord?.bleId || null,
+          trackingNumber: order.trackingNumber || shipmentRecord?.trackingNumber || null
         };
       }),
       ["id", "orderNumber", "medicine"],

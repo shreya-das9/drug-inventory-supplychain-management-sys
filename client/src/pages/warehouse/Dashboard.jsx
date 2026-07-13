@@ -45,6 +45,68 @@ export default function Dashboard() {
 
   const getOrderId = (order) => order?._id || order?.id;
 
+  const normalizeStatus = (value) => String(value || "").toLowerCase().trim();
+  const getShipmentStatus = (order) => {
+    const shipmentStatus = normalizeStatus(order?.shipmentStatus || '');
+    if (shipmentStatus) {
+      return shipmentStatus;
+    }
+
+    const orderStatus = normalizeStatus(order?.status);
+    if (order?.shipmentId && ['approved', 'confirmed', 'pending'].includes(orderStatus)) {
+      return 'pending';
+    }
+
+    return shipmentStatus || orderStatus;
+  };
+  const hasBlePackage = (order) => Boolean(order?.bleId);
+  const hasShipment = (order) => Boolean(order?.shipmentId || order?.bleId);
+
+  const canAllocateBle = (order) => {
+    const orderStatus = normalizeStatus(order?.status);
+    return ['approved', 'confirmed'].includes(orderStatus) && !hasBlePackage(order);
+  };
+
+  const canShowApprovalActions = (order) => {
+    const orderStatus = normalizeStatus(order?.status);
+    return ['pending', 'approved', 'confirmed'].includes(orderStatus);
+  };
+
+  const canDispatchShipment = (order) => {
+    const shipmentStatus = getShipmentStatus(order);
+    return hasShipment(order) && ['pending', 'processing'].includes(shipmentStatus);
+  };
+
+  const canAdvanceShipmentCheckpoint = (order, checkpoint) => {
+    const shipmentStatus = getShipmentStatus(order);
+    if (!hasShipment(order) || ['delivered', 'cancelled'].includes(shipmentStatus)) return false;
+
+    if (checkpoint === 1) {
+      return shipmentStatus === 'pending';
+    }
+    if (checkpoint === 2) {
+      return ['pending', 'processing'].includes(shipmentStatus);
+    }
+    if (checkpoint === 3) {
+      return shipmentStatus === 'shipped';
+    }
+    return false;
+  };
+
+  const canDelayShipment = (order) => {
+    const shipmentStatus = getShipmentStatus(order);
+    return hasShipment(order) && ['pending', 'processing', 'shipped', 'in_transit'].includes(shipmentStatus);
+  };
+
+  const canResumeShipment = (order) => {
+    return canDelayShipment(order);
+  };
+
+  const canCompleteDelivery = (order) => {
+    const shipmentStatus = getShipmentStatus(order);
+    return hasShipment(order) && ['shipped', 'in_transit'].includes(shipmentStatus);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -141,7 +203,7 @@ export default function Dashboard() {
       setAlerts((prev) => ({
         ...prev,
         incomingOrders: prev.incomingOrders.map((order) =>
-          order._id === orderId ? { ...order, bleId: realBleId, maskedBleId: masked, shipmentId, trackingNumber } : order
+          order._id === orderId ? { ...order, bleId: realBleId, maskedBleId: masked, shipmentId, trackingNumber, shipmentStatus: 'pending' } : order
         )
       }));
 
@@ -296,7 +358,9 @@ export default function Dashboard() {
 
       setAlerts((prev) => ({
         ...prev,
-        incomingOrders: prev.incomingOrders.map((item) => item._id === orderId ? { ...item, status: "shipped", shipmentId } : item)
+        incomingOrders: prev.incomingOrders.map((item) =>
+          item._id === orderId ? { ...item, status: "shipped", shipmentId, shipmentStatus: "shipped" } : item
+        )
       }));
 
       showNotification("Shipment dispatched", "success");
@@ -337,7 +401,9 @@ export default function Dashboard() {
 
       setAlerts((prev) => ({
         ...prev,
-        incomingOrders: prev.incomingOrders.map((item) => item._id === orderId ? { ...item, shipmentId, lastWorkflowState: `checkpoint_${checkpoint}` } : item)
+        incomingOrders: prev.incomingOrders.map((item) =>
+          item._id === orderId ? { ...item, shipmentId, shipmentStatus: statusMap[checkpoint] || item.shipmentStatus, lastWorkflowState: `checkpoint_${checkpoint}` } : item
+        )
       }));
 
       showNotification(`Checkpoint ${checkpoint} advanced`, "success");
@@ -934,46 +1000,50 @@ export default function Dashboard() {
                       )}
                       {order.inventoryAvailable && (
                         <>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleApproveOrder(order)}
-                            disabled={actionLoading === `approve-${order._id}` || ["approved", "shipped", "delivered", "completed", "cancelled"].includes(String(order.status || "").toLowerCase())}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
-                            title="Approve order"
-                          >
-                            <CheckCircle className="w-3 h-3" />
-                            Approve Order
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleRejectOrder(order)}
-                            disabled={actionLoading === `reject-${order._id}` || ["cancelled", "delivered", "completed"].includes(String(order.status || "").toLowerCase())}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-rose-500/30 hover:bg-rose-500/50 text-rose-200 font-semibold transition-colors disabled:opacity-50"
-                            title="Reject order"
-                          >
-                            <X className="w-3 h-3" />
-                            Reject Order
-                          </motion.button>
+                          {canShowApprovalActions(order) && (
+                            <>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleApproveOrder(order)}
+                                disabled={actionLoading === `approve-${order._id}` || !canShowApprovalActions(order)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Approve order"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                                Approve Order
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleRejectOrder(order)}
+                                disabled={actionLoading === `reject-${order._id}` || !canShowApprovalActions(order)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-rose-500/30 hover:bg-rose-500/50 text-rose-200 font-semibold transition-colors disabled:opacity-50"
+                                title="Reject order"
+                              >
+                                <X className="w-3 h-3" />
+                                Reject Order
+                              </motion.button>
+                            </>
+                          )}
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => handleAllocateBLE(order._id)}
-                            disabled={actionLoading === `ble-${order._id}`}
+                            disabled={actionLoading === `ble-${order._id}` || !canAllocateBle(order)}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-cyan-500/30 hover:bg-cyan-500/50 text-cyan-200 font-semibold transition-colors disabled:opacity-50"
                             title="Allocate BLE package"
                           >
                             <Package className="w-3 h-3" />
                             Allocate BLE
                           </motion.button>
-                          {order.bleId && (
+                          {hasBlePackage(order) && (
                             <>
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleDispatchShipment(order)}
-                                disabled={actionLoading === `dispatch-${order._id}`}
+                                disabled={actionLoading === `dispatch-${order._id}` || !canDispatchShipment(order)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-indigo-500/30 hover:bg-indigo-500/50 text-indigo-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Dispatch shipment"
                               >
@@ -984,7 +1054,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleAdvanceShipmentCheckpoint(order, 1)}
-                                disabled={actionLoading === `checkpoint-${order._id}-1`}
+                                disabled={actionLoading === `checkpoint-${order._id}-1` || !canAdvanceShipmentCheckpoint(order, 1)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Advance first checkpoint"
                               >
@@ -995,7 +1065,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleAdvanceShipmentCheckpoint(order, 2)}
-                                disabled={actionLoading === `checkpoint-${order._id}-2`}
+                                disabled={actionLoading === `checkpoint-${order._id}-2` || !canAdvanceShipmentCheckpoint(order, 2)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Advance second checkpoint"
                               >
@@ -1006,7 +1076,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleAdvanceShipmentCheckpoint(order, 3)}
-                                disabled={actionLoading === `checkpoint-${order._id}-3`}
+                                disabled={actionLoading === `checkpoint-${order._id}-3` || !canAdvanceShipmentCheckpoint(order, 3)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-violet-500/30 hover:bg-violet-500/50 text-violet-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Advance third checkpoint"
                               >
@@ -1017,7 +1087,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleDelayShipment(order)}
-                                disabled={actionLoading === `delay-${order._id}`}
+                                disabled={actionLoading === `delay-${order._id}` || !canDelayShipment(order)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-amber-500/30 hover:bg-amber-500/50 text-amber-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Flag a delay"
                               >
@@ -1028,7 +1098,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleResumeShipment(order)}
-                                disabled={actionLoading === `resume-${order._id}`}
+                                disabled={actionLoading === `resume-${order._id}` || !canResumeShipment(order)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Resume shipment"
                               >
@@ -1039,7 +1109,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleCompleteDelivery(order)}
-                                disabled={actionLoading === `deliver-${order._id}`}
+                                disabled={actionLoading === `deliver-${order._id}` || !canCompleteDelivery(order)}
                                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-semibold transition-colors disabled:opacity-50"
                                 title="Complete delivery"
                               >
