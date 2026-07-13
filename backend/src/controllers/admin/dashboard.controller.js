@@ -66,10 +66,8 @@ export const getAlerts = async (req, res) => {
         .select("title description severity status relatedShipment metadata createdAt")
         .lean().exec(),
       Order.find({
-        $or: [
-          { status: { $in: ["pending", "confirmed"] } },
-          { escalatedToAdmin: true },
-        ],
+        status: "confirmed",
+        escalatedToAdmin: { $ne: true }
       })
         .sort({ createdAt: -1 })
         .limit(12)
