@@ -6,6 +6,8 @@ export const preserveOrderOwnerIdentity = (order, actorUser = null) => {
   const existingOwnerId = order.user?._id || order.user || order.createdBy?._id || order.createdBy || null;
   const existingOwnerEmail = order.userEmail || order.createdByEmail || null;
   const actorId = actorUser?._id || actorUser?.id || null;
+  const actorRole = String(actorUser?.role || '').toUpperCase();
+  const shouldUseActorEmail = ['RETAILER', 'USER'].includes(actorRole);
 
   if (existingOwnerId) {
     if (!order.user) {
@@ -30,7 +32,7 @@ export const preserveOrderOwnerIdentity = (order, actorUser = null) => {
     order.createdBy = order.createdBy || actorId;
   }
 
-  if (!existingOwnerEmail && actorUser?.email) {
+  if (!existingOwnerEmail && shouldUseActorEmail && actorUser?.email) {
     const actorEmail = String(actorUser.email).toLowerCase().trim();
     if (actorEmail) {
       order.userEmail = order.userEmail || actorEmail;

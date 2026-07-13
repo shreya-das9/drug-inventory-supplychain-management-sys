@@ -86,6 +86,19 @@ const normalizeUserCandidate = async (candidate) => {
 };
 
 const resolveRetailerUser = async ({ retailerUser, retailerUserId, order, shipment }) => {
+  // CRITICAL: Always prioritize stored order emails first
+  // This prevents warehouse/admin users from being used as the retailer recipient
+  if (order) {
+    const orderOwnerEmail = getOwnerEmailFromRecord(order);
+    if (orderOwnerEmail) {
+      return {
+        _id: getObjectIdString(order.user || order.createdBy || null),
+        email: orderOwnerEmail,
+        role: 'RETAILER',
+      };
+    }
+  }
+
   if (retailerUser) {
     const resolved = await normalizeUserCandidate(retailerUser);
     if (resolved && isRetailerRole(resolved)) {
@@ -97,15 +110,6 @@ const resolveRetailerUser = async ({ retailerUser, retailerUserId, order, shipme
   }
 
   if (order) {
-    const orderOwnerEmail = getOwnerEmailFromRecord(order);
-    if (orderOwnerEmail) {
-      return {
-        _id: getObjectIdString(order.user || order.createdBy || null),
-        email: orderOwnerEmail,
-        role: 'RETAILER',
-      };
-    }
-
     const candidateOrderUser = await normalizeUserCandidate(order.user);
     if (candidateOrderUser) {
       if (isRetailerRole(candidateOrderUser)) {

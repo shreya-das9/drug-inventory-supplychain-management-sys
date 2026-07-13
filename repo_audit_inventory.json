@@ -1,0 +1,1920 @@
+[
+  {
+    "file": ".env",
+    "line": 7,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "MONGO_FALLBACK_URI=mongodb://127.0.0.1:27017/drug_inventory"
+  },
+  {
+    "file": ".env",
+    "line": 18,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "EMAIL_USER=dshreya943@gmail.com"
+  },
+  {
+    "file": ".env",
+    "line": 22,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "EMAIL_FROM=dshreya943@gmail.com"
+  },
+  {
+    "file": ".env.example",
+    "line": 11,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "MONGO_FALLBACK_URI=mongodb://127.0.0.1:27017/drug_inventory"
+  },
+  {
+    "file": ".env.example",
+    "line": 23,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "EMAIL_USER=dshreya943@gmail.com"
+  },
+  {
+    "file": ".env.example",
+    "line": 27,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "EMAIL_FROM=dshreya943@gmail.com"
+  },
+  {
+    "file": "ADMIN_AUTH_MIGRATION.md",
+    "line": 88,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "Now when you try to login with `drug.inventory.management.system@gmail.com / calpol650`, it will:"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 8,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'demo',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 9,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'sample',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 10,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'test@example',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 11,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'fake',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 12,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'dummy',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 13,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'fallback',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 14,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'default recipient',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 18,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'recipientEmail',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 19,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'userEmail',"
+  },
+  {
+    "file": "audit_scan.py",
+    "line": 20,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    r'createdByEmail',"
+  },
+  {
+    "file": "DATA_FLOW_ARCHITECTURE.md",
+    "line": 375,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "│  ├─ Check alert.batchNo.includes(search)  ✓ Field fallback!"
+  },
+  {
+    "file": "E2E_TESTING_GUIDE.md",
+    "line": 32,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "This creates sample drugs, inventory items, and alerts for comprehensive testing."
+  },
+  {
+    "file": "E2E_TESTING_GUIDE.md",
+    "line": 256,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "    ✓ Dashboard handles low stock alerts with fallback to populated field names"
+  },
+  {
+    "file": "package-lock.json",
+    "line": 42,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "        \"nodemon\": \"^3.1.10\","
+  },
+  {
+    "file": "package-lock.json",
+    "line": 361,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    \"backend/node_modules/nodemon\": {"
+  },
+  {
+    "file": "package-lock.json",
+    "line": 378,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "        \"nodemon\": \"bin/nodemon.js\""
+  },
+  {
+    "file": "package-lock.json",
+    "line": 385,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "        \"url\": \"https://opencollective.com/nodemon\""
+  },
+  {
+    "file": "TESTING_CHECKLIST.md",
+    "line": 217,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "✓ Dashboard handles low stock alerts with fallback to populated field names"
+  },
+  {
+    "file": "TESTING_CHECKLIST.md",
+    "line": 330,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "- [ ] Fallback UI displays"
+  },
+  {
+    "file": "backend/.env",
+    "line": 12,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "MONGO_FALLBACK_URI=mongodb://127.0.0.1:27017/drug_inventory"
+  },
+  {
+    "file": "backend/.env",
+    "line": 24,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "EMAIL_USER=drug.inventory.management.system@gmail.com"
+  },
+  {
+    "file": "backend/.env",
+    "line": 28,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "EMAIL_FROM=drug.inventory.management.system@gmail.com"
+  },
+  {
+    "file": "backend/.env",
+    "line": 29,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "BLE_ALERT_EMAIL=drug.inventory.management.system@gmail.com"
+  },
+  {
+    "file": "backend/check-admin.js",
+    "line": 9,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "const EMAIL = 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/create-admin.js",
+    "line": 10,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    const email = 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/package-lock.json",
+    "line": 28,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "        \"nodemon\": \"^3.1.10\""
+  },
+  {
+    "file": "backend/package-lock.json",
+    "line": 2354,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    \"node_modules/nodemon\": {"
+  },
+  {
+    "file": "backend/package-lock.json",
+    "line": 2356,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "      \"resolved\": \"https://registry.npmjs.org/nodemon/-/nodemon-3.1.10.tgz\","
+  },
+  {
+    "file": "backend/package-lock.json",
+    "line": 2372,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "        \"nodemon\": \"bin/nodemon.js\""
+  },
+  {
+    "file": "backend/package-lock.json",
+    "line": 2379,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "        \"url\": \"https://opencollective.com/nodemon\""
+  },
+  {
+    "file": "backend/package.json",
+    "line": 7,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    \"dev\": \"nodemon src/server.js\","
+  },
+  {
+    "file": "backend/package.json",
+    "line": 35,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "    \"nodemon\": \"^3.1.10\","
+  },
+  {
+    "file": "backend/temp_db_check.js",
+    "line": 12,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "    console.error('TEMP_RETAILER_EMAIL not set; aborting to avoid demo fallback');"
+  },
+  {
+    "file": "backend/docs/BLE_SIMULATION_SPEC.md",
+    "line": 157,
+    "type": "Documentation",
+    "can_affect_production_email_routing": "No",
+    "content": "- `FAKE_DEVICE_SIGNATURE`: signature mismatch"
+  },
+  {
+    "file": "backend/scripts/allocate_to_shipment.js",
+    "line": 16,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const adminEmail = process.env.DEBUG_ADMIN_EMAIL || 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/scripts/ble_simulator.js",
+    "line": 27,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "      \"Missing BLE_WAREHOUSE_TOKEN (or BLE_ADMIN_TOKEN fallback). Provide a token with warehouse/admin role.\""
+  },
+  {
+    "file": "backend/scripts/create_test_shipment.js",
+    "line": 15,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const adminEmail = process.env.DEBUG_ADMIN_EMAIL || 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/scripts/debug_list_resources.js",
+    "line": 16,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const adminEmail = process.env.DEBUG_ADMIN_EMAIL || 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/scripts/e2e_ble_allocate.js",
+    "line": 46,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "    // Fallback: find a confirmed order and allocate by orderId (controller will create shipment)"
+  },
+  {
+    "file": "backend/scripts/e2e_ble_allocate.js",
+    "line": 82,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "    console.error('E2E_RETAILER_EMAIL not set; aborting e2e_ble_allocate to avoid demo fallbacks');"
+  },
+  {
+    "file": "backend/scripts/find_target_shipment.js",
+    "line": 15,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const adminEmail = process.env.DEBUG_ADMIN_EMAIL || 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/scripts/get_admin_token.js",
+    "line": 12,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const admin = await User.findOne({ email: 'drug.inventory.management.system@gmail.com' });"
+  },
+  {
+    "file": "backend/scripts/investigate_retailer_shipments.js",
+    "line": 15,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  // Require an explicit retailer email; do not fallback to seeded/demo users"
+  },
+  {
+    "file": "backend/scripts/investigate_retailer_shipments.js",
+    "line": 17,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "    console.error('No retailerEmail provided. Aborting to avoid demo fallbacks.');"
+  },
+  {
+    "file": "backend/scripts/investigate_retailer_shipments.js",
+    "line": 41,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  if (orders.length > 0) console.log('Sample order id:', orders[0]._id.toString(), 'orderNumber:', orders[0].orderNumber, 'user:', orders[0].user?.toString());"
+  },
+  {
+    "file": "backend/scripts/investigate_retailer_shipments.js",
+    "line": 65,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "    console.log('\\nSample shipments (up to 5)');"
+  },
+  {
+    "file": "backend/scripts/investigate_retailer_shipments.js",
+    "line": 107,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "// run (explicit env var required to avoid demo fallbacks)"
+  },
+  {
+    "file": "backend/scripts/list_drugs.js",
+    "line": 15,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const adminEmail = process.env.DEBUG_ADMIN_EMAIL || 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/scripts/list_suppliers.js",
+    "line": 15,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "  const adminEmail = process.env.DEBUG_ADMIN_EMAIL || 'drug.inventory.management.system@gmail.com';"
+  },
+  {
+    "file": "backend/scripts/seed_openfda.js",
+    "line": 41,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "          expiryDate: new Date(Date.now() + 365*24*3600*1000 * 1.5) // dummy"
+  },
+  {
+    "file": "backend/scripts/seed_orders_shipments.js",
+    "line": 40,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "    // Customers can be provided via environment variable as JSON array to avoid hardcoded demo emails"
+  },
+  {
+    "file": "backend/scripts/seed_orders_shipments.js",
+    "line": 53,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": "      console.log('No SEED_CUSTOMERS_JSON provided; skipping creation of demo users to avoid seeded demo emails.');"
+  },
+  {
+    "file": "backend/scripts/seed_test_data.js",
+    "line": 3,
+    "type": "Temporary script",
+    "can_affect_production_email_routing": "No",
+    "content": " * Creates sample drugs, inventory, and alerts for comprehensive testing"
+  },
+  {
+    "file": "backend/src/config/db.js",
+    "line": 16,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const fallbackUri = process.env.MONGO_FALLBACK_URI || DEFAULT_LOCAL_MONGO_URI;"
+  },
+  {
+    "file": "backend/src/config/db.js",
+    "line": 33,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        return await connectWithUri(fallbackUri);"
+  },
+  {
+    "file": "backend/src/config/db.js",
+    "line": 34,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      } catch (fallbackError) {"
+  },
+  {
+    "file": "backend/src/config/db.js",
+    "line": 35,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        console.error(`❌ Local fallback MongoDB connection failed: ${fallbackError.message}`);"
+  },
+  {
+    "file": "backend/src/controllers/bleAllocation.controller.js",
+    "line": 148,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/bleAllocation.controller.js",
+    "line": 158,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/bleAllocation.controller.js",
+    "line": 160,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 3,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "import { resolveWorkflowRecipientEmails, sendWorkflowEventNotification, sendWorkflowEventNotifications } from '../services/notification.service.js';"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 112,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 123,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 125,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 320,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 331,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 333,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 395,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 406,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 408,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 455,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 466,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 468,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 648,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 656,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/bleScan.controller.js",
+    "line": 658,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/compliance.controller.js",
+    "line": 9,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from \"../services/notification.service.js\";"
+  },
+  {
+    "file": "backend/src/controllers/compliance.controller.js",
+    "line": 121,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/compliance.controller.js",
+    "line": 130,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/compliance.controller.js",
+    "line": 132,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 5,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from '../services/notification.service.js';"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 109,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      orderData.userEmail = String(req.user.email).toLowerCase().trim();"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 110,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      orderData.createdByEmail = String(req.user.email).toLowerCase().trim();"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 156,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 168,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 170,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 311,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        console.info('[ORDER_OWNER]', { orderId: order._id?.toString(), ownerId: retailerUser?._id || retailerUserId, ownerEmail: retailerUser?.email || order.userEmail || order.createdByEmail || null });"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 313,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 326,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails.forEach((r) => console.info('[EMAIL_RECIPIENT]', { eventType: effectiveEventType, recipient: r }));"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 328,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 331,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "            recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 352,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "            recipientEmails"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 385,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 394,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/controllers/orders.controller.js",
+    "line": 396,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails,"
+  },
+  {
+    "file": "backend/src/controllers/shipments.controller.js",
+    "line": 7,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "import { resolveWorkflowRecipientEmails, sendWorkflowEventNotifications } from '../services/notification.service.js';"
+  },
+  {
+    "file": "backend/src/controllers/shipments.controller.js",
+    "line": 342,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/controllers/shipments.controller.js",
+    "line": 354,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      if (recipientEmails.length && ['shipped', 'delivered'].includes(newStatusLower)) {"
+  },
+  {
+    "file": "backend/src/controllers/shipments.controller.js",
+    "line": 356,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails,"
+  },
+  {
+    "file": "backend/src/models/OrderModel.js",
+    "line": 33,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  userEmail: {"
+  },
+  {
+    "file": "backend/src/models/OrderModel.js",
+    "line": 39,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  createdByEmail: {"
+  },
+  {
+    "file": "backend/src/routes/auth.routes.js",
+    "line": 170,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    await transporter.sendMail({"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 287,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "router.post(\"/simulation/demo-flow\", async (req, res) => {"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 296,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const medicineName = req.body?.medicine || \"Demo Antibiotic\";"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 307,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        description: \"Auto-created for simulation demo flow\","
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 350,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      statusHistory: [{ status: \"processing\", timestamp: new Date(), updatedBy: userId, notes: \"Demo flow created shipment\" }],"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 355,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      description: \"Demo workflow created a persisted order and shipment for frontend walkthroughs.\","
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 362,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      metadata: { source: \"simulation-demo-flow\" },"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 367,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    return successResponse(res, 201, \"Simulation demo flow created\", { orderId: order._id, shipmentId: shipment._id });"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 369,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.error(\"Simulation demo flow error:\", error);"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 370,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    return errorResponse(res, 500, \"Failed to create simulation demo flow\", error.message);"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 392,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    return successResponse(res, 200, \"Simulation demo data reset\", { deletedOrders: orderIds.length });"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 395,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    return errorResponse(res, 500, \"Failed to reset simulation demo data\", error.message);"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 513,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 523,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/routes/user.routes.js",
+    "line": 525,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails,"
+  },
+  {
+    "file": "backend/src/services/ble.service.js",
+    "line": 596,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "\t\talerts.push(\"FAKE_DEVICE_SIGNATURE\");"
+  },
+  {
+    "file": "backend/src/services/email.service.js",
+    "line": 94,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  return mailer.sendMail({"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 188,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const resolveWorkflowRecipientEmails = async ({ retailerUserId, retailerUser, includeRetailer, includeWarehouse, includeAdmin, eventType, order, shipment, orderId, warehouseUserId }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 190,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const recipientEmails = new Set();"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 212,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    retailerUserEmail: retailerUser?.email || null,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 217,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      recipientEmails.add(resolvedRetailerEmail);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 235,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "          recipientEmails.add(userDoc.email);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 242,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const resolvedEmailAddresses = Array.from(recipientEmails);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 261,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      resolvedRecipientEmails: resolvedEmailAddresses,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 268,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      resolvedRecipientEmails: resolvedEmailAddresses,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 279,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": " * @param {string} options.recipientEmail - Recipient email address"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 284,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const sendLowStockAlert = async ({ recipientEmail, drugName, currentStock, threshold }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 288,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn(`Email service not initialized; skipping low stock alert to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 294,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      to: recipientEmail,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 305,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    await mailer.sendMail(mailOptions);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 306,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.log(`✅ Low stock alert sent to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 316,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": " * @param {string} options.recipientEmail - Recipient email address"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 322,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const sendExpiryAlert = async ({ recipientEmail, drugName, batchNumber, expiryDate, daysUntilExpiry }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 326,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn(`Email service not initialized; skipping expiry alert to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 332,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      to: recipientEmail,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 344,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    await mailer.sendMail(mailOptions);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 345,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.log(`✅ Expiry alert sent to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 355,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": " * @param {string} options.recipientEmail - Recipient email address"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 360,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const sendOrderConfirmation = async ({ recipientEmail, orderNumber, totalAmount, expectedDelivery }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 364,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn(`Email service not initialized; skipping order confirmation to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 370,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      to: recipientEmail,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 381,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    await mailer.sendMail(mailOptions);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 382,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.log(`✅ Order confirmation sent to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 392,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": " * @param {string} options.recipientEmail - Recipient email address"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 397,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const sendShipmentUpdate = async ({ recipientEmail, shipmentId, status, location }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 401,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn(`Email service not initialized; skipping shipment update to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 407,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      to: recipientEmail,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 418,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    await mailer.sendMail(mailOptions);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 419,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.log(`✅ Shipment update sent to ${recipientEmail}`);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 429,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const sendWorkflowEventNotification = async ({ recipientEmail, eventType = 'order_workflow', orderNumber, shipmentNumber, medicine, quantity, totalAmount, status, nextStep, details }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 432,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    if (!recipientEmail) {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 433,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn(\"[notifications] skipped\", { eventName: eventType, recipientEmail: null, reason: \"missing-recipient-email\" });"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 438,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn(\"[notifications] skipped\", { eventName: eventType, recipientEmail, reason: \"email-service-not-initialized\" });"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 442,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.info('[EMAIL_SEND]', { eventName: eventType, recipientEmail, service: 'sendWorkflowEventNotification' });"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 446,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      to: recipientEmail,"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 459,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.info('[SENDMAIL_START]', { recipientEmail, eventType, subject: mailOptions.subject });"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 460,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    const result = await mailer.sendMail(mailOptions);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 461,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.info('[SENDMAIL_SUCCESS]', { recipientEmail, messageId: result.messageId, response: result.response });"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 472,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const sendWorkflowEventNotifications = async ({ recipientEmails, ...payload }) => {"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 473,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const recipients = (recipientEmails || []).filter(Boolean);"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 484,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  console.info(\"[notifications] batch\", { eventName: payload.eventType, recipientEmails: recipients, service: \"sendWorkflowEventNotifications\" });"
+  },
+  {
+    "file": "backend/src/services/notification.service.js",
+    "line": 486,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const tasks = recipients.map((recipientEmail) => sendWorkflowEventNotification({ ...payload, recipientEmail }));"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 6,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  resolveWorkflowRecipientEmails,"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 69,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    userEmail: user.email || null,"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 70,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    createdByEmail: user.email || null,"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 104,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const recipientEmails = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 116,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  if (recipientEmails.length) {"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 117,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "    console.info('[NOTIFICATION_TRIGGERED]', { eventType: 'order_created', recipientEmails });"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 120,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.info('[EMAIL_ENTRY]', { eventType: 'order_created', recipientEmails });"
+  },
+  {
+    "file": "backend/src/services/retailerOrderWorkflow.service.js",
+    "line": 122,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        recipientEmails,"
+  },
+  {
+    "file": "backend/tests/ble.routes.test.js",
+    "line": 52,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "        recipientEmail: 'test@example.com',"
+  },
+  {
+    "file": "backend/tests/notification-routing.test.js",
+    "line": 4,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "import { resolveWorkflowRecipientEmails } from '../src/services/notification.service.js';"
+  },
+  {
+    "file": "backend/tests/notification-routing.test.js",
+    "line": 33,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "    const warehouseCreated = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/tests/notification-routing.test.js",
+    "line": 39,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "    const approvedRecipients = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/tests/notification-routing.test.js",
+    "line": 65,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "    const recipients = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/tests/notification-routing.test.js",
+    "line": 96,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "    const delayedRecipients = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/tests/notification-routing.test.js",
+    "line": 102,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "    const complianceRecipients = await resolveWorkflowRecipientEmails({"
+  },
+  {
+    "file": "backend/tests/simulation.routes.test.js",
+    "line": 39,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "  it('creates persisted demo order, shipment, and compliance artifacts', async () => {"
+  },
+  {
+    "file": "backend/tests/simulation.routes.test.js",
+    "line": 42,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "      name: 'Demo Retailer',"
+  },
+  {
+    "file": "backend/tests/simulation.routes.test.js",
+    "line": 52,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "      .post('/api/users/simulation/demo-flow')"
+  },
+  {
+    "file": "backend/tests/simulation.routes.test.js",
+    "line": 54,
+    "type": "Test",
+    "can_affect_production_email_routing": "No",
+    "content": "      .send({ mode: 'demo' })"
+  },
+  {
+    "file": "client/backend/scripts/reports/retailer_data.json",
+    "line": 8,
+    "type": "Unused file",
+    "can_affect_production_email_routing": "No",
+    "content": "      \"email\": \"john@retailer.com\","
+  },
+  {
+    "file": "client/src/App.jsx",
+    "line": 227,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        {/* Fallback */}"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 57,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const injectDemoAdminFlow = async () => {"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 59,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      await request(\"POST\", \"/api/users/simulation/demo-flow\", {"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 60,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        medicine: \"Demo Oncology Pack\","
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 63,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        purchaseOrderNumber: `ADM-DEMO-${Date.now()}`,"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 67,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setNotificationToast({ message: \"Admin demo alerts synced from backend\", type: \"info\" });"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 70,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.error(\"Failed to create admin demo flow\", error);"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 71,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setNotificationToast({ message: error.message || \"Failed to create admin demo flow\", type: \"error\" });"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 81,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setNotificationToast({ message: \"Admin demo data cleared\", type: \"info\" });"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 84,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.error(\"Failed to reset admin demo flow\", error);"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 85,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setNotificationToast({ message: error.message || \"Failed to reset admin demo data\", type: \"error\" });"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 178,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "            <p className=\"font-semibold\">Admin demo controls</p>"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 187,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "              {simulationEnabled ? \"Disable demo mode\" : \"Enable demo mode\"}"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 191,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "              onClick={injectDemoAdminFlow}"
+  },
+  {
+    "file": "client/src/pages/admin/Alerts.jsx",
+    "line": 201,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "              Reset demo state"
+  },
+  {
+    "file": "client/src/pages/admin/Drugs.jsx",
+    "line": 174,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  // Fallback to 0 if no inventory found"
+  },
+  {
+    "file": "client/src/pages/admin/Drugs.jsx",
+    "line": 814,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  // If still no data, use sample"
+  },
+  {
+    "file": "client/src/pages/admin/Drugs.jsx",
+    "line": 852,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "            <Info size={14} /> <span>📊 Showing sample data - Add drugs with prices to see real analytics</span>"
+  },
+  {
+    "file": "client/src/pages/admin/Inventory.jsx",
+    "line": 30,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "// fallback image"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 30,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "import { buildRetailerFallbackData, shouldSeedRetailerFallbackData } from \"./retailerDashboardData\";"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 136,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const addDemoOrderFlow = async () => {"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 138,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      await request(\"POST\", \"/api/users/simulation/demo-flow\", {"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 139,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        medicine: \"Demo Antibiotic\","
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 142,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        purchaseOrderNumber: `PO-DEMO-${Date.now()}`,"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 146,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(\"Demo order flow persisted and synced across dashboards\", \"success\");"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 148,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(error.message || \"Failed to create demo order flow\", \"error\");"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 155,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      await addDemoOrderFlow();"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 168,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(\"Demo entries cleared\", \"success\");"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 170,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(error.message || \"Failed to reset demo data\", \"error\");"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 381,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const fallbackDecision = shouldSeedRetailerFallbackData(normalizedOrders, normalizedShipments, localStorage.getItem(\"token\") || \"\");"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 382,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const finalOrders = fallbackDecision.shouldSeed ? buildRetailerFallbackData().orders : normalizedOrders;"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 383,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const finalShipments = fallbackDecision.shouldSeed ? buildRetailerFallbackData().shipments : normalizedShipments;"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 387,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        console.log(\"[DIAG][Home] Sample order:\", normalizedOrders[0]);"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 388,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        console.log(\"[DIAG][Home] Sample shipment:\", normalizedShipments[0]);"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 407,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      const fallback = buildRetailerFallbackData();"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 408,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setOrders(fallback.orders.map(normalizeOrder));"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 409,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setShipments(fallback.shipments.map(normalizeShipment));"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 410,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      setStats({ totalOrders: fallback.orders.length, pendingOrders: 0 });"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 421,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.log('[DIAG][Home.useEffect] sample shipments', Array.isArray(shipments) ? shipments.slice(0,3) : shipments);"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 423,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      console.warn('[DIAG][Home.useEffect] unable to show sample shipments', e);"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 721,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                {simulationEnabled ? \"Disable demo mode\" : \"Enable demo mode\"}"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 725,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                onClick={addDemoOrderFlow}"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 732,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                onClick={addDemoOrderFlow}"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 742,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                Reset demo state"
+  },
+  {
+    "file": "client/src/pages/retailer/Home.jsx",
+    "line": 1101,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                  onClick={addDemoOrderFlow}"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 1,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "const buildRetailerFallbackData = () => ({"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 4,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      _id: \"fallback-order-1\","
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 5,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      orderNumber: \"ORD-FALLBACK-001\","
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 15,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      _id: \"fallback-shipment-1\","
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 16,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      trackingNumber: \"SHP-FALLBACK-001\","
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 39,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      order: { orderNumber: \"ORD-FALLBACK-001\" },"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 52,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "const shouldSeedRetailerFallbackData = (orders = [], shipments = [], token = \"\") => {"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.js",
+    "line": 63,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export { buildRetailerFallbackData, shouldSeedRetailerFallbackData };"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 3,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "import { buildRetailerFallbackData, shouldSeedRetailerFallbackData } from \"./retailerDashboardData.js\";"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 5,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "test(\"buildRetailerFallbackData returns demo orders and shipments\", () => {"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 6,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const fallback = buildRetailerFallbackData();"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 8,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  assert.ok(Array.isArray(fallback.orders));"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 9,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  assert.equal(fallback.orders.length, 1);"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 10,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  assert.ok(Array.isArray(fallback.shipments));"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 11,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  assert.equal(fallback.shipments.length, 1);"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 12,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  assert.equal(fallback.orders[0].status, \"Confirmed\");"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 13,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  assert.equal(fallback.shipments[0].status, \"Shipped\");"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 16,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "test(\"shouldSeedRetailerFallbackData returns false when real retailer data already exists\", () => {"
+  },
+  {
+    "file": "client/src/pages/retailer/retailerDashboardData.test.js",
+    "line": 17,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const result = shouldSeedRetailerFallbackData("
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 66,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  const injectDemoWarehouseFlow = async () => {"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 68,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      await request(\"POST\", \"/api/users/simulation/demo-flow\", {"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 69,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        medicine: \"Demo Vaccine\","
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 72,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "        purchaseOrderNumber: `WH-DEMO-${Date.now()}`,"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 76,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(\"Demo warehouse activity persisted and synced\", \"success\");"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 78,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(error.message || \"Failed to create warehouse demo flow\", \"error\");"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 85,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      await injectDemoWarehouseFlow();"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 99,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(\"Warehouse demo state cleared\", \"success\");"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 101,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "      showNotification(error.message || \"Failed to reset warehouse demo data\", \"error\");"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 631,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "              <p className=\"font-semibold\">Warehouse demo controls</p>"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 640,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                {simulationEnabled ? \"Disable demo mode\" : \"Enable demo mode\"}"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 644,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                onClick={injectDemoWarehouseFlow}"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.jsx",
+    "line": 661,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "                Reset demo state"
+  },
+  {
+    "file": "client/src/pages/warehouse/Dashboard.test.jsx",
+    "line": 170,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "  test('Dashboard handles low stock alerts with fallback to populated field names', async () => {"
+  },
+  {
+    "file": "client/src/services/auth.api.js",
+    "line": 13,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "const requestWithFallback = async (method, path, data = null) => {"
+  },
+  {
+    "file": "client/src/services/auth.api.js",
+    "line": 46,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const signup = (data) => requestWithFallback(\"post\", \"/auth/signup\", data);"
+  },
+  {
+    "file": "client/src/services/auth.api.js",
+    "line": 47,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const login = (data) => requestWithFallback(\"post\", \"/auth/login\", data);"
+  },
+  {
+    "file": "client/src/services/auth.api.js",
+    "line": 48,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const forgotPassword = (data) => requestWithFallback(\"post\", \"/auth/forgot-password\", data);"
+  },
+  {
+    "file": "client/src/services/auth.api.js",
+    "line": 49,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const resetPassword = (data) => requestWithFallback(\"post\", \"/auth/reset-password\", data);"
+  },
+  {
+    "file": "client/src/services/auth.api.js",
+    "line": 50,
+    "type": "Runtime code",
+    "can_affect_production_email_routing": "Yes",
+    "content": "export const verifyResetToken = (token) => requestWithFallback(\"get\", `/auth/verify-reset-token/${token}`);"
+  }
+]

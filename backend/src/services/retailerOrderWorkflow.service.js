@@ -63,11 +63,18 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
     ? "Warehouse checks inventory, allocates BLE package, and prepares dispatch."
     : "Notify retailer and admin of stock shortage.";
 
+  const retailerUser = await User.findById(user?._id || user?.id).select("email name role");
+  const retailerEmail = retailerUser?.email ? String(retailerUser.email).toLowerCase().trim() : (user?.email ? String(user.email).toLowerCase().trim() : null);
+
+  if (!retailerEmail) {
+    console.warn('[RETAILER_EMAIL_MISSING]', { userId: user?._id || user?.id, role: user?.role });
+  }
+
   const order = await Order.create({
-    user: user._id,
-    createdBy: user._id,
-    userEmail: user.email || null,
-    createdByEmail: user.email || null,
+    user: user._id || user?.id,
+    createdBy: user._id || user?.id,
+    userEmail: retailerEmail,
+    createdByEmail: retailerEmail,
     orderNumber: purchaseOrderNumber?.startsWith("SIM-") ? purchaseOrderNumber : undefined,
     purchaseOrderNumber: purchaseOrderNumber || `PO-${Date.now()}`,
     items: [{
@@ -84,14 +91,13 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
     statusHistory: [{
       status: orderStatus,
       timestamp: new Date(),
-      updatedBy: user._id,
+      updatedBy: user._id || user?.id,
       notes: inventoryAvailable
         ? "Retailer order created; warehouse notified"
         : "Retailer order created; stock shortage flagged",
     }],
   });
 
-  const retailerUser = await User.findById(user?._id || user?.id).select("email name role");
   console.info('[ORDER_CREATED]', { orderId: order._id, orderNumber: order.orderNumber || order.purchaseOrderNumber });
   console.info('[AUTHENTICATED_RETAILER]', { email: retailerUser?.email || user?.email || null, userId: retailerUser?._id || user?._id || null });
   await order.populate([

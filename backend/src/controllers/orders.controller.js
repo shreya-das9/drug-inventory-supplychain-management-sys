@@ -222,13 +222,39 @@ const updateOrderStatus = async (req, res) => {
     
     const previousStatus = order.status;
 
+    // CRITICAL: Preserve existing owner emails BEFORE calling preserveOrderOwnerIdentity
+    // This prevents warehouse/admin emails from overwriting retailer emails
+    const existingOwnerEmail = String(order.userEmail || order.createdByEmail || '').trim().toLowerCase();
+
     preserveOrderOwnerIdentity(order, req.user);
 
+    // If owner email existed, restore it to prevent overwrite with warehouse/admin email
+    if (existingOwnerEmail && !order.userEmail && !order.createdByEmail) {
+      order.userEmail = existingOwnerEmail;
+      order.createdByEmail = existingOwnerEmail;
+    }
+
     const persistedOwnerEmail = String(order.userEmail || order.createdByEmail || '').trim().toLowerCase();
-    if (!persistedOwnerEmail && req.user?.email) {
-      order.userEmail = String(req.user.email).toLowerCase().trim();
-      order.createdByEmail = String(req.user.email).toLowerCase().trim();
-    } else if (persistedOwnerEmail) {
+    if (!persistedOwnerEmail) {
+      const ownerUserId = order.user || order.createdBy || null;
+      if (ownerUserId) {
+        const ownerUser = await UserModel.findById(ownerUserId).select('email role');
+        const ownerEmail = ownerUser?.email ? String(ownerUser.email).toLowerCase().trim() : null;
+        const ownerRole = String(ownerUser?.role || '').toUpperCase();
+        // Only use owner email if they're a RETAILER/USER (not WAREHOUSE/ADMIN)
+        if (ownerEmail && ['RETAILER', 'USER'].includes(ownerRole)) {
+          order.userEmail = order.userEmail || ownerEmail;
+          order.createdByEmail = order.createdByEmail || ownerEmail;
+        }
+      }
+
+      const actorRole = String(req.user?.role || '').toUpperCase();
+      if (!order.userEmail && !order.createdByEmail && ['RETAILER', 'USER'].includes(actorRole) && req.user?.email) {
+        const actorEmail = String(req.user.email).toLowerCase().trim();
+        order.userEmail = order.userEmail || actorEmail;
+        order.createdByEmail = order.createdByEmail || actorEmail;
+      }
+    } else {
       order.userEmail = order.userEmail || persistedOwnerEmail;
       order.createdByEmail = order.createdByEmail || persistedOwnerEmail;
     }
