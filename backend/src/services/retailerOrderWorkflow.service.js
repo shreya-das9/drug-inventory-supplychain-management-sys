@@ -37,7 +37,7 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
     throw error;
   }
 
-  let drug = await Drug.findOne({ name: { $regex: new RegExp(`^${escapeRegExp(trimmedMedicine)}$`, "i") } });
+  let drug = await Drug.findOne({ name: { $regex: new RegExp(`^${escapeRegExp(trimmedMedicine)}$`, "i") } }).select("name batchNumber price description supplier");
 
   if (!drug) {
     drug = await Drug.create({
@@ -75,6 +75,7 @@ export const createRetailerOrderWorkflow = async ({ user, medicine, quantity, to
     createdBy: user._id || user?.id,
     userEmail: retailerEmail,
     createdByEmail: retailerEmail,
+    supplier: drug.supplier || null,
     orderNumber: purchaseOrderNumber?.startsWith("SIM-") ? purchaseOrderNumber : undefined,
     purchaseOrderNumber: purchaseOrderNumber || `PO-${Date.now()}`,
     items: [{
